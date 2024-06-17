@@ -36,7 +36,6 @@ func.range = {
 
     toggleVisualizer = function(self, state)
         self.visualizerEnabled = state
-        -- Visualizer logic (could be using Billboards, Part, etc.)
         if state then
             -- Enable visualizer
             for _, player in pairs(game.Players:GetPlayers()) do
