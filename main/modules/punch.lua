@@ -3,8 +3,8 @@ local punch = {}
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local punchRange = 10
-local maxDetectionRange = 25
+local punchRange = 20 -- The effective range for punching
+local maxDetectionRange = 25 -- The range to detect entities
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
@@ -36,7 +36,6 @@ local function isInFrontAndVisible(localPosition, localLookVector, targetPositio
         end
     end
 
-    debugPrint("[Debug] Path is clear, target in front:", isInFront)
     return isInFront
 end
 
@@ -50,12 +49,17 @@ local function findNearestEntity()
         return nil
     end
 
-    local candidates = includeNPCs and Workspace:GetDescendants() or game.Players:GetPlayers()
+    local function isValidCandidate(model)
+        local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return false end
+        if not includeNPCs and not game.Players:GetPlayerFromCharacter(model) then return false end
+        return true
+    end
 
-    for _, model in ipairs(candidates) do
-        local humanoidRootPart = model:IsA("Model") and model:FindFirstChild("HumanoidRootPart")
-        if humanoidRootPart and model ~= player.Character then
-            if includeNPCs or model:IsA("Player") then
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model ~= player.Character and isValidCandidate(model) then
+            local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
                 local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
                 if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
                     closestEntity = model
