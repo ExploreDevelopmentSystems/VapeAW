@@ -8,6 +8,7 @@ local visualizerEnabled = false
 local angleCheckEnabled = false
 local lastVisualizedPlayer
 local reachConnection
+local active = false
 
 local function revertReachChanges(player)
     local rootPart = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -59,6 +60,8 @@ function reach.start()
     player.CharacterAdded:Connect(onCharacterAdded)
     character = player.Character or player.CharacterAdded:Wait()
     reachConnection = game:GetService("RunService").Stepped:Connect(function()
+        if not active then return end
+
         local closestPlayer = getClosestPlayer()
 
         if lastVisualizedPlayer and lastVisualizedPlayer ~= closestPlayer then
@@ -78,6 +81,7 @@ function reach.start()
             lastVisualizedPlayer = closestPlayer
         end
     end)
+    active = true
 end
 
 function reach.stop()
@@ -89,6 +93,7 @@ function reach.stop()
             lastVisualizedPlayer = nil
         end
     end
+    active = false
 end
 
 function reach.update(value)
