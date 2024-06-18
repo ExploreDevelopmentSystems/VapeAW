@@ -171,7 +171,7 @@ end
 
 local function removeVisualizerPart(model)
     if model then
-        local visualPart = model:FindFirstChildWhichIsA("Part", true)
+        local visualPart = model:FindFirstChild("Serv")
         if visualPart then
             visualPart:Destroy()
             debugPrint("[Debug] Visualizer part removed from model:", model.Name)
