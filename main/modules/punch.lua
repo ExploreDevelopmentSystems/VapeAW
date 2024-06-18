@@ -105,14 +105,17 @@ local function computeImpactPosition(targetModel)
         impactPosition = humanoidRootPart.Position
     end
 
-    -- Random displacement within a radius of 1 stud
+    -- Place the impact position slightly in front of the target's torso
+    impactPosition = impactPosition - directionToTarget * 1.5
+
+    -- Add random displacement within a radius of 1 stud
     local displacement = Vector3.new(
         Random:NextNumber(-1, 1),
         Random:NextNumber(-1, 1),
         Random:NextNumber(-1, 1)
     ).Unit * 1
 
-    return impactPosition - directionToTarget * 1.5 + displacement
+    return impactPosition + displacement
 end
 
 local function punchNearestEntity()
@@ -157,16 +160,22 @@ local function createVisualizerPart(model)
     part.Name = "Serv"
     part.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
     part.Transparency = 0.5
-    part.Anchored = true
+    part.Anchored = false
     part.CanCollide = false
     part.Color = Color3.new(1, 1, 1) -- White color
     part.Material = Enum.Material.ForceField
     part.CFrame = humanoidRootPart.CFrame
     part.Parent = Workspace
 
-    Debris:AddItem(part, 0.5) -- Auto-remove after 0.5 seconds
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = part
+    weld.Part1 = humanoidRootPart
+    weld.Parent = part
 
     debugPrint("[Debug] Visualizer created for model:", model.Name)
+
+    -- Remove the visualizer after 0.5 seconds
+    Debris:AddItem(part, 0.5)
 end
 
 local function removeVisualizerPart(model)
@@ -201,10 +210,6 @@ end
 function punch.toggleVisualizer(callback)
     punchVisualizerEnabled = callback
     debugPrint("[Debug] Visualizer toggled:", callback)
-    local nearestEntity = findNearestEntity()
-    if punchVisualizerEnabled and nearestEntity then
-        createVisualizerPart(nearestEntity)
-    end
 end
 
 function punch.toggleAngleCheck(callback)
