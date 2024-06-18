@@ -17,6 +17,7 @@ local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
 local visualizerPart
+local active = false
 
 local function debugPrint(...)
     -- Debug printing enabled only for internal checks
@@ -164,6 +165,8 @@ local function removeVisualizerPart()
 end
 
 local function punchNearestEntity()
+    if not active then return end
+
     local nearestEntity = findNearestEntity()
     if nearestEntity then
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
@@ -207,13 +210,6 @@ end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
-    if mouseConnection then
-        mouseConnection:Disconnect()
-    end
-    mouseConnection = player:GetMouse().Button1Down:Connect(function()
-        debugPrint("[Debug] Mouse button clicked.")
-        punchNearestEntity()
-    end)
 end
 
 function punch.start()
@@ -224,6 +220,7 @@ function punch.start()
         debugPrint("[Debug] Mouse button clicked.")
         punchNearestEntity()
     end)
+    active = true
     debugPrint("[Debug] Punch module started.")
 end
 
@@ -234,6 +231,7 @@ function punch.stop()
         debugPrint("[Debug] Mouse connection stopped.")
     end
     removeVisualizerPart()
+    active = false
 end
 
 function punch.updateRange(value)
