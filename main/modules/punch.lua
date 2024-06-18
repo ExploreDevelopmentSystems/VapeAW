@@ -6,9 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
 local Random = Random.new()
-
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local character
 local punchRange = 20
 local maxDetectionRange = 25
 local punchVisualizerEnabled = false
@@ -18,12 +17,10 @@ local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
 local visualizerPart
-local debugEnabled = true
 
 local function debugPrint(...)
-    if debugEnabled then
-        print(...)
-    end
+    -- Debug printing enabled only for internal checks
+    print(...)
 end
 
 local function getTargetLimbs(targetModel)
@@ -68,7 +65,7 @@ end
 local function findNearestEntity()
     local closestEntity
     local shortestDistance = math.huge
-    local localRootPart = character:FindFirstChild("HumanoidRootPart")
+    local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
 
     if not localRootPart then
         debugPrint("[Debug] Local player does not have HumanoidRootPart.")
@@ -107,7 +104,7 @@ local function computeImpactPosition(targetModel)
         return Vector3.new(0, 0, 0)
     end
 
-    local rightHand = character:FindFirstChild("RightHand")
+    local rightHand = character and character:FindFirstChild("RightHand")
     if not rightHand then return humanoidRootPart.Position end
 
     local targetLimb = getRandomLimb(targetModel)
@@ -138,25 +135,23 @@ local function createVisualizerPart(targetModel)
         return
     end
 
-    -- Remove old visualizer if it exists
     if visualizerPart then
         visualizerPart:Destroy()
     end
 
     visualizerPart = Instance.new("Part")
     visualizerPart.Name = "Visualizer"
-    visualizerPart.Size = Vector3.new(4, 6, 4) -- Fixed size with height 6
+    visualizerPart.Size = Vector3.new(4, 6, 4)
     visualizerPart.Transparency = 0.5
     visualizerPart.Anchored = true
     visualizerPart.CanCollide = false
-    visualizerPart.Color = Color3.new(1, 0, 0) -- Red color
+    visualizerPart.Color = Color3.new(1, 0, 0)
     visualizerPart.Material = Enum.Material.ForceField
     visualizerPart.CFrame = humanoidRootPart.CFrame
     visualizerPart.Parent = Workspace
 
     debugPrint("[Debug] Visualizer created for model:", targetModel.Name)
 
-    -- Auto-remove after 1 second
     Debris:AddItem(visualizerPart, 1)
 end
 
@@ -174,7 +169,7 @@ local function punchNearestEntity()
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
             if wallCheckEnabled then
-                local localRootPart = character:FindFirstChild("HumanoidRootPart")
+                local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
                 if localRootPart then
                     local directionToTarget = (humanoidRootPart.Position - localRootPart.Position).Unit
                     local rayParams = RaycastParams.new()
@@ -184,7 +179,7 @@ local function punchNearestEntity()
                     local ray = Workspace:Raycast(localRootPart.Position, directionToTarget * punchRange, rayParams)
                     if ray and ray.Instance and not ray.Instance:IsDescendantOf(nearestEntity) then
                         debugPrint("[Debug] Wall check failed: Ray hit", ray.Instance.Name)
-                        return -- Block punch due to wall obstruction
+                        return
                     end
                 end
             end
@@ -210,8 +205,21 @@ local function punchNearestEntity()
     end
 end
 
+local function onCharacterAdded(newCharacter)
+    character = newCharacter
+    if mouseConnection then
+        mouseConnection:Disconnect()
+    end
+    mouseConnection = player:GetMouse().Button1Down:Connect(function()
+        debugPrint("[Debug] Mouse button clicked.")
+        punchNearestEntity()
+    end)
+end
+
 function punch.start()
     if mouseConnection then return end
+    player.CharacterAdded:Connect(onCharacterAdded)
+    character = player.Character or player.CharacterAdded:Wait()
     mouseConnection = player:GetMouse().Button1Down:Connect(function()
         debugPrint("[Debug] Mouse button clicked.")
         punchNearestEntity()
