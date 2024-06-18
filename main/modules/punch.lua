@@ -7,8 +7,8 @@ local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local punchRange = 20
-local maxDetectionRange = 25
+local punchRange = 20 -- Effective punch range
+local maxDetectionRange = 25 -- Detection range for entities
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
@@ -103,7 +103,7 @@ local function computeImpactPosition(targetModel)
         impactPosition = humanoidRootPart.Position
     end
 
-    return impactPosition
+    return impactPosition - directionToTarget * 1.5 -- Adjusted particle position
 end
 
 local function punchNearestEntity()
@@ -140,6 +140,9 @@ local function createVisualizerPart(model)
         debugPrint("[Debug] No HumanoidRootPart found for model in visualizer:", model.Name)
         return
     end
+
+    -- Remove old visualizer if it exists
+    removeVisualizerPart(model)
 
     local part = Instance.new("Part")
     part.Name = "Serv"
