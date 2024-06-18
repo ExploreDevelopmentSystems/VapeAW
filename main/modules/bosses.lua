@@ -5,20 +5,16 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local bossesFolder = ReplicatedStorage:WaitForChild("Bosses")
-local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 local punchDelay = 0.5
 local falseifyEnabled = false
 local active = false
 local connection
-local debugEnabled = true
+local character
 local detectionRange = 20
 
 local function debugPrint(...)
-    if debugEnabled then
-        print(...)
-    end
+    -- Debug printing enabled only for internal checks
+    print(...)
 end
 
 local function countNearbyPlayers(position, range)
@@ -35,49 +31,54 @@ local function countNearbyPlayers(position, range)
 end
 
 local function punchBosses()
-    if not active then return end
+    if not active or not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
-    local localRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not localRootPart then
-        debugPrint("[Debug] Local player does not have HumanoidRootPart.")
-        return
-    end
+    local localRootPart = character.HumanoidRootPart
 
-    for _, boss in ipairs(bossesFolder:GetChildren()) do
-        if boss:IsA("Model") then
-            local bossInWorkspace = Workspace:FindFirstChild(boss.Name)
-            if bossInWorkspace then
-                local humanoidRootPart = bossInWorkspace:FindFirstChild("HumanoidRootPart")
-                if humanoidRootPart then
-                    if falseifyEnabled then
-                        local nearbyPlayers = countNearbyPlayers(humanoidRootPart.Position, detectionRange)
-                        if nearbyPlayers < 2 then
-                            debugPrint("[Debug] Not enough players around the boss:", bossInWorkspace.Name)
-                            return -- Skip punching if not enough players around
+    local bossesFolder = ReplicatedStorage:FindFirstChild("Bosses")
+    local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
+
+    if bossesFolder and punchEvent then
+        for _, boss in ipairs(bossesFolder:GetChildren()) do
+            if boss:IsA("Model") then
+                local bossInWorkspace = Workspace:FindFirstChild(boss.Name)
+                if bossInWorkspace then
+                    local humanoidRootPart = bossInWorkspace:FindFirstChild("HumanoidRootPart")
+                    if humanoidRootPart then
+                        if falseifyEnabled then
+                            local nearbyPlayers = countNearbyPlayers(humanoidRootPart.Position, detectionRange)
+                            if nearbyPlayers < 2 then
+                                debugPrint("[Debug] Not enough players around the boss:", bossInWorkspace.Name)
+                                return
+                            end
                         end
-                    end
 
-                    local impactPosition = humanoidRootPart.Position
-                    if punchEvent then
+                        local impactPosition = humanoidRootPart.Position
                         debugPrint("[Debug] Punching boss:", bossInWorkspace.Name)
                         punchEvent:FireServer(bossInWorkspace, impactPosition)
                     else
-                        warn("[Debug] Punch event not found.")
+                        debugPrint("[Debug] No HumanoidRootPart for boss:", bossInWorkspace.Name)
                     end
-                else
-                    debugPrint("[Debug] No HumanoidRootPart for boss:", bossInWorkspace.Name)
                 end
             end
         end
+    else
+        debugPrint("[Debug] Bosses folder or punch event not found.")
     end
+end
+
+local function onCharacterAdded(newCharacter)
+    character = newCharacter
 end
 
 function bosses.start()
     if connection then return end
     active = true
+    player.CharacterAdded:Connect(onCharacterAdded)
+    character = player.Character or player.CharacterAdded:Wait()
     connection = game:GetService("RunService").Stepped:Connect(function()
         punchBosses()
-        task.wait(punchDelay) -- Wait for the configured punch delay
+        task.wait(punchDelay)
     end)
     debugPrint("[Debug] Bosses module started.")
 end
