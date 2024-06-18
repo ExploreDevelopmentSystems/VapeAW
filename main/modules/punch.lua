@@ -4,11 +4,13 @@ local punch = {}
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+local Random = Random.new()
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local punchRange = 20 -- Effective punch range
-local maxDetectionRange = 25 -- Detection range for entities
+local punchRange = 20
+local maxDetectionRange = 25
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
@@ -103,7 +105,14 @@ local function computeImpactPosition(targetModel)
         impactPosition = humanoidRootPart.Position
     end
 
-    return impactPosition - directionToTarget * 1.5 -- Adjusted particle position
+    -- Random displacement within a radius of 1 stud
+    local displacement = Vector3.new(
+        Random:NextNumber(-1, 1),
+        Random:NextNumber(-1, 1),
+        Random:NextNumber(-1, 1)
+    ).Unit * 1
+
+    return impactPosition - directionToTarget * 1.5 + displacement
 end
 
 local function punchNearestEntity()
@@ -146,41 +155,22 @@ local function createVisualizerPart(model)
 
     local part = Instance.new("Part")
     part.Name = "Serv"
-    part.Size = humanoidRootPart.Size
+    part.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
     part.Transparency = 0.5
-    part.Anchored = false
+    part.Anchored = true
     part.CanCollide = false
-    part.Color = Color3.new(1, 0, 0)
-    part.Material = Enum.Material.SmoothPlastic
-    part.Parent = model
+    part.Color = Color3.new(1, 1, 1) -- White color
+    part.Material = Enum.Material.ForceField
     part.CFrame = humanoidRootPart.CFrame
+    part.Parent = Workspace
 
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = part
-    weld.Part1 = humanoidRootPart
-    weld.Parent = part
-
-    local selectionBox = Instance.new("SelectionBox")
-    selectionBox.Adornee = part
-    selectionBox.Parent = model
+    Debris:AddItem(part, 0.5) -- Auto-remove after 0.5 seconds
 
     debugPrint("[Debug] Visualizer created for model:", model.Name)
-    return part
 end
 
 local function removeVisualizerPart(model)
-    if model then
-        local visualPart = model:FindFirstChild("Serv")
-        if visualPart then
-            visualPart:Destroy()
-            debugPrint("[Debug] Visualizer part removed from model:", model.Name)
-        end
-        local selectionBox = model:FindFirstChildWhichIsA("SelectionBox", true)
-        if selectionBox then
-            selectionBox:Destroy()
-            debugPrint("[Debug] SelectionBox removed from model:", model.Name)
-        end
-    end
+    -- Since visualizer parts are auto-removed, no additional cleanup needed
 end
 
 function punch.start()
@@ -214,8 +204,6 @@ function punch.toggleVisualizer(callback)
     local nearestEntity = findNearestEntity()
     if punchVisualizerEnabled and nearestEntity then
         createVisualizerPart(nearestEntity)
-    else
-        removeVisualizerPart(nearestEntity)
     end
 end
 
