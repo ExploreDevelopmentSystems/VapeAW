@@ -69,14 +69,17 @@ local function punchNearestEntity()
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
             local impactPosition = punchParticleEnabled and humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 1) or Vector3.new(1e4, 1e4, 1e4)
-
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
+
             if punchEvent then
+                print("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
                 punchEvent:FireServer(nearestEntity, impactPosition)
-                print("[Debug] Punch event fired on:", nearestEntity:GetFullName(), "at position:", impactPosition)
+                print("[Debug] Punch event fired.")
             else
                 warn("[Debug] Punch event not found.")
             end
+        else
+            print("[Debug] No HumanoidRootPart for the nearest entity:", nearestEntity.Name)
         end
     else
         print("[Debug] No nearest entity to punch.")
@@ -130,6 +133,7 @@ function punch.start()
         print("[Debug] Mouse button clicked.")
         punchNearestEntity()
     end)
+    print("[Debug] Punch module started.")
 end
 
 function punch.stop()
