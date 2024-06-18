@@ -2,7 +2,7 @@
 local reach = {}
 
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local character
 local headSize = 20
 local visualizerEnabled = false
 local angleCheckEnabled = false
@@ -23,7 +23,7 @@ end
 local function getClosestPlayer()
     local closestPlayer
     local shortestDistance = math.huge
-    local localRootPart = character:FindFirstChild("HumanoidRootPart")
+    local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
 
     if not localRootPart then return nil end
 
@@ -50,8 +50,14 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
+local function onCharacterAdded(newCharacter)
+    character = newCharacter
+end
+
 function reach.start()
     if reachConnection then return end
+    player.CharacterAdded:Connect(onCharacterAdded)
+    character = player.Character or player.CharacterAdded:Wait()
     reachConnection = game:GetService("RunService").Stepped:Connect(function()
         local closestPlayer = getClosestPlayer()
 
@@ -59,7 +65,7 @@ function reach.start()
             revertReachChanges(lastVisualizedPlayer)
         end
 
-        local localRootPart = character:FindFirstChild("HumanoidRootPart")
+        local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
         local targetRootPart = closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart")
 
         if localRootPart and targetRootPart then
