@@ -1,17 +1,21 @@
 -- Punch Module
 local punch = {}
 
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local punchRange = 20 -- The effective range for punching
-local maxDetectionRange = 25 -- The range to detect entities
+local punchRange = 20
+local maxDetectionRange = 25
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
 local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
-local debugEnabled = true -- Set this to false to disable debug messages
+local debugEnabled = true
 
 local function debugPrint(...)
     if debugEnabled then
@@ -49,28 +53,19 @@ local function findNearestEntity()
         return nil
     end
 
-    local function isValidCandidate(model)
-        local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
-        if not humanoidRootPart then
-            debugPrint("[Debug] Model does not have HumanoidRootPart:", model.Name)
-            return false
-        end
-        if not includeNPCs and not game.Players:GetPlayerFromCharacter(model) then
-            debugPrint("[Debug] Model is not a player:", model.Name)
-            return false
-        end
-        return true
-    end
-
     for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model ~= player.Character and isValidCandidate(model) then
+        if model:IsA("Model") and model ~= character then
             local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
             if humanoidRootPart then
-                local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
-                if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
-                    closestEntity = model
-                    shortestDistance = distance
-                    debugPrint("[Debug] Nearest entity found:", model.Name, "Distance:", distance)
+                if includeNPCs or Players:GetPlayerFromCharacter(model) then
+                    local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
+                    if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
+                        if distance < shortestDistance then
+                            closestEntity = model
+                            shortestDistance = distance
+                            debugPrint("[Debug] Nearest entity found:", model.Name, "Distance:", distance)
+                        end
+                    end
                 end
             end
         end
@@ -147,7 +142,8 @@ local function createVisualizerPart(model)
     end
 
     local part = Instance.new("Part")
-    part.Size = Vector3.new(4, 6, 4)
+    part.Name = "Serv"
+    part.Size = humanoidRootPart.Size
     part.Transparency = 0.5
     part.Anchored = false
     part.CanCollide = false
