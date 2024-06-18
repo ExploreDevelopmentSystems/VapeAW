@@ -25,6 +25,25 @@ local function debugPrint(...)
     end
 end
 
+local function getTargetLimbs(targetModel)
+    local limbs = {}
+    for _, partName in ipairs({"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+        local limb = targetModel:FindFirstChild(partName)
+        if limb then
+            table.insert(limbs, limb)
+        end
+    end
+    return limbs
+end
+
+local function getRandomLimb(targetModel)
+    local limbs = getTargetLimbs(targetModel)
+    if #limbs > 0 then
+        return limbs[Random:NextInteger(1, #limbs)]
+    end
+    return nil
+end
+
 local function isInFrontAndVisible(localPosition, localLookVector, targetPosition, targetModel)
     local directionToTarget = (targetPosition - localPosition).Unit
     local dotProduct = localLookVector:Dot(directionToTarget)
@@ -90,8 +109,11 @@ local function computeImpactPosition(targetModel)
     local rightHand = character:FindFirstChild("RightHand")
     if not rightHand then return humanoidRootPart.Position end
 
-    local directionToTarget = (humanoidRootPart.Position - rightHand.Position).Unit
-    local distance = (humanoidRootPart.Position - rightHand.Position).Magnitude
+    local targetLimb = getRandomLimb(targetModel)
+    if not targetLimb then return humanoidRootPart.Position end
+
+    local directionToTarget = (targetLimb.Position - rightHand.Position).Unit
+    local distance = (targetLimb.Position - rightHand.Position).Magnitude
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {character}
@@ -100,22 +122,12 @@ local function computeImpactPosition(targetModel)
 
     local impactPosition
     if ray then
-        impactPosition = ray.Position + directionToTarget * 1
+        impactPosition = ray.Position
     else
-        impactPosition = humanoidRootPart.Position
+        impactPosition = targetLimb.Position
     end
 
-    -- Place the impact position slightly in front of the target's torso
-    impactPosition = impactPosition - directionToTarget * 1.5
-
-    -- Add random displacement within a radius of 1 stud
-    local displacement = Vector3.new(
-        Random:NextNumber(-1, 1),
-        Random:NextNumber(-1, 1),
-        Random:NextNumber(-1, 1)
-    ).Unit * 1
-
-    return impactPosition + displacement
+    return impactPosition
 end
 
 local function punchNearestEntity()
@@ -159,10 +171,10 @@ local function createVisualizerPart(model)
     local part = Instance.new("Part")
     part.Name = "Serv"
     part.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
-    part.Transparency = 0.5
+    part.Transparency = 0.3
     part.Anchored = false
     part.CanCollide = false
-    part.Color = Color3.new(1, 1, 1) -- White color
+    part.Color = Color3.new(1, 0, 0) -- Red color
     part.Material = Enum.Material.ForceField
     part.CFrame = humanoidRootPart.CFrame
     part.Parent = Workspace
@@ -187,6 +199,12 @@ function punch.start()
     mouseConnection = player:GetMouse().Button1Down:Connect(function()
         debugPrint("[Debug] Mouse button clicked.")
         punchNearestEntity()
+        if punchVisualizerEnabled then
+            local nearestEntity = findNearestEntity()
+            if nearestEntity then
+                createVisualizerPart(nearestEntity)
+            end
+        end
     end)
     debugPrint("[Debug] Punch module started.")
 end
