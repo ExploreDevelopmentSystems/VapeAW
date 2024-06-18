@@ -17,6 +17,7 @@ local includeNPCs = true
 local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
+local visualizerPart
 local debugEnabled = true
 
 local function debugPrint(...)
@@ -144,7 +145,7 @@ local function createVisualizerPart(targetModel)
 
     visualizerPart = Instance.new("Part")
     visualizerPart.Name = "Visualizer"
-    visualizerPart.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
+    visualizerPart.Size = Vector3.new(4, 6, 4) -- Fixed size with height 6
     visualizerPart.Transparency = 0.5
     visualizerPart.Anchored = true
     visualizerPart.CanCollide = false
@@ -172,6 +173,22 @@ local function punchNearestEntity()
     if nearestEntity then
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
+            if wallCheckEnabled then
+                local localRootPart = character:FindFirstChild("HumanoidRootPart")
+                if localRootPart then
+                    local directionToTarget = (humanoidRootPart.Position - localRootPart.Position).Unit
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+                    rayParams.FilterDescendantsInstances = {character}
+
+                    local ray = Workspace:Raycast(localRootPart.Position, directionToTarget * punchRange, rayParams)
+                    if ray and ray.Instance and not ray.Instance:IsDescendantOf(nearestEntity) then
+                        debugPrint("[Debug] Wall check failed: Ray hit", ray.Instance.Name)
+                        return -- Block punch due to wall obstruction
+                    end
+                end
+            end
+
             local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or Vector3.new(1e4, 1e4, 1e4)
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 
