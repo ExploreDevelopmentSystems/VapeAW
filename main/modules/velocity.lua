@@ -7,9 +7,10 @@ local horizontalPercent = 1
 local verticalPercent = 1
 local velocityConnection
 local originalForces = {}
+local active = false
 
 local function suppressAndApplyForces()
-    if not character then return end
+    if not character or not active then return end
 
     for _, instance in pairs(character:GetDescendants()) do
         if instance:IsA("BodyVelocity") or instance:IsA("BodyForce") then
@@ -45,6 +46,7 @@ function velocity.start()
     player.CharacterAdded:Connect(onCharacterAdded)
     character = player.Character or player.CharacterAdded:Wait()
     velocityConnection = game:GetService("RunService").Stepped:Connect(suppressAndApplyForces)
+    active = true
 end
 
 function velocity.stop()
@@ -62,6 +64,7 @@ function velocity.stop()
         end
         originalForces = {}
     end
+    active = false
 end
 
 function velocity.updateHorizontal(value)
