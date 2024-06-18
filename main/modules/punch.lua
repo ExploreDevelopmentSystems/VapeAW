@@ -131,42 +131,13 @@ local function computeImpactPosition(targetModel)
     return impactPosition
 end
 
-local function punchNearestEntity()
-    local nearestEntity = findNearestEntity()
-    if nearestEntity then
-        local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
-        if humanoidRootPart then
-            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or Vector3.new(1e4, 1e4, 1e4)
-            local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
-
-            if punchEvent then
-                debugPrint("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
-                punchEvent:FireServer(nearestEntity, impactPosition)
-                debugPrint("[Debug] Punch event fired.")
-            else
-                warn("[Debug] Punch event not found.")
-            end
-        else
-            debugPrint("[Debug] No HumanoidRootPart for the nearest entity:", nearestEntity.Name)
-        end
-    else
-        debugPrint("[Debug] No nearest entity to punch.")
-    end
-end
-
-local function createVisualizerPart(model)
-    if not model then
-        debugPrint("[Debug] No model provided for visualizer.")
-        return
-    end
-
-    local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+local function createVisualizerPart(targetModel)
+    local humanoidRootPart = targetModel:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then
-        debugPrint("[Debug] No HumanoidRootPart found for model in visualizer:", model.Name)
+        debugPrint("[Debug] createVisualizerPart: No HumanoidRootPart for target model:", targetModel.Name)
         return
     end
 
-    -- Remove old visualizer if it exists
     removeVisualizerPart()
 
     visualizerPart = Instance.new("Part")
@@ -180,17 +151,10 @@ local function createVisualizerPart(model)
     visualizerPart.CFrame = humanoidRootPart.CFrame
     visualizerPart.Parent = Workspace
 
-    debugPrint("[Debug] Visualizer created for model:", model.Name)
+    debugPrint("[Debug] Visualizer created for model:", targetModel.Name)
 
-    -- Update the visualizer's position in real-time
-    game:GetService("RunService").Stepped:Connect(function()
-        if visualizerPart and humanoidRootPart then
-            visualizerPart.CFrame = humanoidRootPart.CFrame
-        end
-    end)
-
-    -- Automatically remove the visualizer after 0.5 seconds
-    Debris:AddItem(visualizerPart, 0.5)
+    -- Auto-remove after 1 second
+    Debris:AddItem(visualizerPart, 1)
 end
 
 local function removeVisualizerPart()
@@ -201,17 +165,37 @@ local function removeVisualizerPart()
     end
 end
 
+local function punchNearestEntity()
+    local nearestEntity = findNearestEntity()
+    if nearestEntity then
+        local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or Vector3.new(1e4, 1e4, 1e4)
+            local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
+
+            if punchEvent then
+                debugPrint("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
+                punchEvent:FireServer(nearestEntity, impactPosition)
+                debugPrint("[Debug] Punch event fired.")
+                if punchVisualizerEnabled then
+                    createVisualizerPart(nearestEntity)
+                end
+            else
+                warn("[Debug] Punch event not found.")
+            end
+        else
+            debugPrint("[Debug] No HumanoidRootPart for the nearest entity:", nearestEntity.Name)
+        end
+    else
+        debugPrint("[Debug] No nearest entity to punch.")
+    end
+end
+
 function punch.start()
     if mouseConnection then return end
     mouseConnection = player:GetMouse().Button1Down:Connect(function()
         debugPrint("[Debug] Mouse button clicked.")
         punchNearestEntity()
-        if punchVisualizerEnabled then
-            local nearestEntity = findNearestEntity()
-            if nearestEntity then
-                createVisualizerPart(nearestEntity)
-            end
-        end
     end)
     debugPrint("[Debug] Punch module started.")
 end
