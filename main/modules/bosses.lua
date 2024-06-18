@@ -69,17 +69,20 @@ end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
+    if active then
+        punchBosses()
+    end
 end
 
 function bosses.start()
     if connection then return end
-    active = true
     player.CharacterAdded:Connect(onCharacterAdded)
     character = player.Character or player.CharacterAdded:Wait()
     connection = game:GetService("RunService").Stepped:Connect(function()
         punchBosses()
         task.wait(punchDelay)
     end)
+    active = true
     debugPrint("[Debug] Bosses module started.")
 end
 
