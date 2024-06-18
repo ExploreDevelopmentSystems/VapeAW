@@ -4,6 +4,7 @@ local punch = {}
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local punchRange = 10
+local maxDetectionRange = 25
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
@@ -41,7 +42,7 @@ local function findNearestEntity()
         if humanoidRootPart and model ~= player.Character then
             if includeNPCs or model:IsA("Player") then
                 local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
-                if distance <= punchRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position)) then
+                if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position)) then
                     closestEntity = model
                     shortestDistance = distance
                 end
@@ -57,7 +58,7 @@ local function punchNearestEntity()
     if nearestEntity then
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
-            local impactPosition = punchParticleEnabled and humanoidRootPart.Position or Vector3.new(1e4, 1e4, 1e4)
+            local impactPosition = punchParticleEnabled and humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 1) or Vector3.new(1e4, 1e4, 1e4)
 
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
             if punchEvent then
@@ -70,9 +71,45 @@ local function punchNearestEntity()
     end
 end
 
+local function createVisualizerPart(model)
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(4, 6, 4) -- Change size to fit the model
+    part.Transparency = 1
+    part.Anchored = false
+    part.CanCollide = false
+    part.Parent = model
+    part.CFrame = model.HumanoidRootPart.CFrame
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = part
+    weld.Part1 = model.HumanoidRootPart
+    weld.Parent = part
+
+    local selectionBox = Instance.new("SelectionBox")
+    selectionBox.Adornee = part
+    selectionBox.Parent = model
+
+    return part
+end
+
+local function removeVisualizerPart(model)
+    if model then
+        local visualPart = model:FindFirstChildWhichIsA("Part", true)
+        if visualPart then
+            visualPart:Destroy()
+        end
+        local selectionBox = model:FindFirstChildWhichIsA("SelectionBox", true)
+        if selectionBox then
+            selectionBox:Destroy()
+        end
+    end
+end
+
 function punch.start()
     if mouseConnection then return end
-    mouseConnection = player:GetMouse().Button1Down:Connect(punchNearestEntity)
+    mouseConnection = player:GetMouse().Button1Down:Connect(function()
+        punchNearestEntity()
+    end)
 end
 
 function punch.stop()
@@ -91,6 +128,12 @@ end
 
 function punch.toggleVisualizer(callback)
     punchVisualizerEnabled = callback
+    local nearestEntity = findNearestEntity()
+    if punchVisualizerEnabled and nearestEntity then
+        createVisualizerPart(nearestEntity)
+    else
+        removeVisualizerPart(nearestEntity)
+    end
 end
 
 function punch.toggleAngleCheck(callback)
