@@ -84,11 +84,17 @@ local function findNearestEntity()
 end
 
 local function computeImpactPosition(targetModel)
-    local rightHand = character:FindFirstChild("RightHand")
-    if not rightHand then return targetModel.HumanoidRootPart.Position end
+    local humanoidRootPart = targetModel:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        debugPrint("[Debug] computeImpactPosition: No HumanoidRootPart for target model:", targetModel.Name)
+        return Vector3.new(0, 0, 0)
+    end
 
-    local directionToTarget = (targetModel.HumanoidRootPart.Position - rightHand.Position).Unit
-    local distance = (targetModel.HumanoidRootPart.Position - rightHand.Position).Magnitude
+    local rightHand = character:FindFirstChild("RightHand")
+    if not rightHand then return humanoidRootPart.Position end
+
+    local directionToTarget = (humanoidRootPart.Position - rightHand.Position).Unit
+    local distance = (humanoidRootPart.Position - rightHand.Position).Magnitude
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {character}
@@ -99,7 +105,7 @@ local function computeImpactPosition(targetModel)
     if ray then
         impactPosition = ray.Position + directionToTarget * 1
     else
-        impactPosition = targetModel.HumanoidRootPart.Position
+        impactPosition = humanoidRootPart.Position
     end
 
     return impactPosition
@@ -133,6 +139,13 @@ local function createVisualizerPart(model)
         debugPrint("[Debug] No model provided for visualizer.")
         return
     end
+
+    local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        debugPrint("[Debug] No HumanoidRootPart found for model in visualizer:", model.Name)
+        return
+    end
+
     local part = Instance.new("Part")
     part.Size = Vector3.new(4, 6, 4)
     part.Transparency = 0.5
@@ -141,11 +154,11 @@ local function createVisualizerPart(model)
     part.Color = Color3.new(1, 0, 0)
     part.Material = Enum.Material.SmoothPlastic
     part.Parent = model
-    part.CFrame = model.HumanoidRootPart.CFrame
+    part.CFrame = humanoidRootPart.CFrame
 
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = part
-    weld.Part1 = model.HumanoidRootPart
+    weld.Part1 = humanoidRootPart
     weld.Parent = part
 
     local selectionBox = Instance.new("SelectionBox")
