@@ -51,8 +51,14 @@ local function findNearestEntity()
 
     local function isValidCandidate(model)
         local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
-        if not humanoidRootPart then return false end
-        if not includeNPCs and not game.Players:GetPlayerFromCharacter(model) then return false end
+        if not humanoidRootPart then
+            debugPrint("[Debug] Model does not have HumanoidRootPart:", model.Name)
+            return false
+        end
+        if not includeNPCs and not game.Players:GetPlayerFromCharacter(model) then
+            debugPrint("[Debug] Model is not a player:", model.Name)
+            return false
+        end
         return true
     end
 
