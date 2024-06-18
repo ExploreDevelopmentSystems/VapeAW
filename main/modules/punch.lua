@@ -9,24 +9,34 @@ local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
 local punchParticleEnabled = false
+local wallCheckEnabled = false
 local mouseConnection
+local debugEnabled = true -- Set this to false to disable debug messages
 
-local function isInFrontAndVisible(localPosition, localLookVector, targetPosition)
+local function debugPrint(...)
+    if debugEnabled then
+        print(...)
+    end
+end
+
+local function isInFrontAndVisible(localPosition, localLookVector, targetPosition, targetModel)
     local directionToTarget = (targetPosition - localPosition).Unit
     local dotProduct = localLookVector:Dot(directionToTarget)
     local isInFront = dotProduct > 0.3
 
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.FilterDescendantsInstances = {character}
+    if wallCheckEnabled then
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        rayParams.FilterDescendantsInstances = {character}
 
-    local ray = Workspace:Raycast(localPosition, directionToTarget * punchRange, rayParams)
-    if ray and ray.Instance and not ray.Instance:IsDescendantOf(character) then
-        print("[Debug] Raycast hit:", ray.Instance.Name, "Not clear path.")
-        return false
+        local ray = Workspace:Raycast(localPosition, directionToTarget * punchRange, rayParams)
+        if ray and ray.Instance and not ray.Instance:IsDescendantOf(targetModel) then
+            debugPrint("[Debug] Raycast hit:", ray.Instance.Name, "Not clear path.")
+            return false
+        end
     end
 
-    print("[Debug] Path is clear, target in front:", isInFront)
+    debugPrint("[Debug] Path is clear, target in front:", isInFront)
     return isInFront
 end
 
@@ -36,7 +46,7 @@ local function findNearestEntity()
     local localRootPart = character:FindFirstChild("HumanoidRootPart")
 
     if not localRootPart then
-        print("[Debug] Local player does not have HumanoidRootPart.")
+        debugPrint("[Debug] Local player does not have HumanoidRootPart.")
         return nil
     end
 
@@ -47,20 +57,42 @@ local function findNearestEntity()
         if humanoidRootPart and model ~= player.Character then
             if includeNPCs or model:IsA("Player") then
                 local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
-                if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position)) then
+                if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
                     closestEntity = model
                     shortestDistance = distance
-                    print("[Debug] Nearest entity found:", model.Name, "Distance:", distance)
+                    debugPrint("[Debug] Nearest entity found:", model.Name, "Distance:", distance)
                 end
             end
         end
     end
 
     if not closestEntity then
-        print("[Debug] No entity found within range.")
+        debugPrint("[Debug] No entity found within range.")
     end
 
     return closestEntity
+end
+
+local function computeImpactPosition(targetModel)
+    local rightHand = character:FindFirstChild("RightHand")
+    if not rightHand then return targetModel.HumanoidRootPart.Position end
+
+    local directionToTarget = (targetModel.HumanoidRootPart.Position - rightHand.Position).Unit
+    local distance = (targetModel.HumanoidRootPart.Position - rightHand.Position).Magnitude
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {character}
+
+    local ray = Workspace:Raycast(rightHand.Position, directionToTarget * distance, rayParams)
+
+    local impactPosition
+    if ray then
+        impactPosition = ray.Position + directionToTarget * 1
+    else
+        impactPosition = targetModel.HumanoidRootPart.Position
+    end
+
+    return impactPosition
 end
 
 local function punchNearestEntity()
@@ -68,34 +100,36 @@ local function punchNearestEntity()
     if nearestEntity then
         local humanoidRootPart = nearestEntity:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
-            local impactPosition = punchParticleEnabled and humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 1) or Vector3.new(1e4, 1e4, 1e4)
+            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or Vector3.new(1e4, 1e4, 1e4)
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 
             if punchEvent then
-                print("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
+                debugPrint("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
                 punchEvent:FireServer(nearestEntity, impactPosition)
-                print("[Debug] Punch event fired.")
+                debugPrint("[Debug] Punch event fired.")
             else
                 warn("[Debug] Punch event not found.")
             end
         else
-            print("[Debug] No HumanoidRootPart for the nearest entity:", nearestEntity.Name)
+            debugPrint("[Debug] No HumanoidRootPart for the nearest entity:", nearestEntity.Name)
         end
     else
-        print("[Debug] No nearest entity to punch.")
+        debugPrint("[Debug] No nearest entity to punch.")
     end
 end
 
 local function createVisualizerPart(model)
     if not model then
-        print("[Debug] No model provided for visualizer.")
+        debugPrint("[Debug] No model provided for visualizer.")
         return
     end
     local part = Instance.new("Part")
     part.Size = Vector3.new(4, 6, 4)
-    part.Transparency = 1
+    part.Transparency = 0.5
     part.Anchored = false
     part.CanCollide = false
+    part.Color = Color3.new(1, 0, 0)
+    part.Material = Enum.Material.SmoothPlastic
     part.Parent = model
     part.CFrame = model.HumanoidRootPart.CFrame
 
@@ -108,7 +142,7 @@ local function createVisualizerPart(model)
     selectionBox.Adornee = part
     selectionBox.Parent = model
 
-    print("[Debug] Visualizer created for model:", model.Name)
+    debugPrint("[Debug] Visualizer created for model:", model.Name)
     return part
 end
 
@@ -117,12 +151,12 @@ local function removeVisualizerPart(model)
         local visualPart = model:FindFirstChildWhichIsA("Part", true)
         if visualPart then
             visualPart:Destroy()
-            print("[Debug] Visualizer part removed from model:", model.Name)
+            debugPrint("[Debug] Visualizer part removed from model:", model.Name)
         end
         local selectionBox = model:FindFirstChildWhichIsA("SelectionBox", true)
         if selectionBox then
             selectionBox:Destroy()
-            print("[Debug] SelectionBox removed from model:", model.Name)
+            debugPrint("[Debug] SelectionBox removed from model:", model.Name)
         end
     end
 end
@@ -130,17 +164,17 @@ end
 function punch.start()
     if mouseConnection then return end
     mouseConnection = player:GetMouse().Button1Down:Connect(function()
-        print("[Debug] Mouse button clicked.")
+        debugPrint("[Debug] Mouse button clicked.")
         punchNearestEntity()
     end)
-    print("[Debug] Punch module started.")
+    debugPrint("[Debug] Punch module started.")
 end
 
 function punch.stop()
     if mouseConnection then
         mouseConnection:Disconnect()
         mouseConnection = nil
-        print("[Debug] Mouse connection stopped.")
+        debugPrint("[Debug] Mouse connection stopped.")
     end
 end
 
@@ -148,13 +182,13 @@ function punch.updateRange(value)
     local rangeValue = tonumber(value)
     if rangeValue then
         punchRange = rangeValue
-        print("[Debug] Punch range updated to:", punchRange)
+        debugPrint("[Debug] Punch range updated to:", punchRange)
     end
 end
 
 function punch.toggleVisualizer(callback)
     punchVisualizerEnabled = callback
-    print("[Debug] Visualizer toggled:", callback)
+    debugPrint("[Debug] Visualizer toggled:", callback)
     local nearestEntity = findNearestEntity()
     if punchVisualizerEnabled and nearestEntity then
         createVisualizerPart(nearestEntity)
@@ -165,17 +199,22 @@ end
 
 function punch.toggleAngleCheck(callback)
     punchAngleCheckEnabled = callback
-    print("[Debug] Angle check toggled:", callback)
+    debugPrint("[Debug] Angle check toggled:", callback)
 end
 
 function punch.toggleIncludeNPCs(callback)
     includeNPCs = callback
-    print("[Debug] Include NPCs toggled:", callback)
+    debugPrint("[Debug] Include NPCs toggled:", callback)
 end
 
 function punch.toggleParticle(callback)
     punchParticleEnabled = callback
-    print("[Debug] Particle effect toggled:", callback)
+    debugPrint("[Debug] Particle effect toggled:", callback)
+end
+
+function punch.toggleWallCheck(callback)
+    wallCheckEnabled = callback
+    debugPrint("[Debug] Wall check toggled:", callback)
 end
 
 function punch.getRange()
