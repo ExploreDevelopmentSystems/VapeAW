@@ -189,7 +189,7 @@ local function punchNearestEntity()
                 end
             end
 
-            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or Vector3.new(1e4, 1e4, 1e4)
+            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or humanoidRootPart.Position
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 
             if punchEvent then
