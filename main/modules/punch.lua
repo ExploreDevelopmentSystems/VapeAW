@@ -22,9 +22,11 @@ local function isInFrontAndVisible(localPosition, localLookVector, targetPositio
 
     local ray = Workspace:Raycast(localPosition, directionToTarget * punchRange, rayParams)
     if ray and ray.Instance and not ray.Instance:IsDescendantOf(character) then
+        print("[Debug] Raycast hit:", ray.Instance.Name, "Not clear path.")
         return false
     end
 
+    print("[Debug] Path is clear, target in front:", isInFront)
     return isInFront
 end
 
@@ -33,7 +35,10 @@ local function findNearestEntity()
     local shortestDistance = math.huge
     local localRootPart = character:FindFirstChild("HumanoidRootPart")
 
-    if not localRootPart then return nil end
+    if not localRootPart then
+        print("[Debug] Local player does not have HumanoidRootPart.")
+        return nil
+    end
 
     local candidates = includeNPCs and Workspace:GetDescendants() or game.Players:GetPlayers()
 
@@ -45,9 +50,14 @@ local function findNearestEntity()
                 if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position)) then
                     closestEntity = model
                     shortestDistance = distance
+                    print("[Debug] Nearest entity found:", model.Name, "Distance:", distance)
                 end
             end
         end
+    end
+
+    if not closestEntity then
+        print("[Debug] No entity found within range.")
     end
 
     return closestEntity
@@ -63,17 +73,23 @@ local function punchNearestEntity()
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
             if punchEvent then
                 punchEvent:FireServer(nearestEntity, impactPosition)
-                print("Punch fired at model:", nearestEntity:GetFullName(), "at position:", impactPosition)
+                print("[Debug] Punch event fired on:", nearestEntity:GetFullName(), "at position:", impactPosition)
             else
-                warn("Punch event not found.")
+                warn("[Debug] Punch event not found.")
             end
         end
+    else
+        print("[Debug] No nearest entity to punch.")
     end
 end
 
 local function createVisualizerPart(model)
+    if not model then
+        print("[Debug] No model provided for visualizer.")
+        return
+    end
     local part = Instance.new("Part")
-    part.Size = Vector3.new(4, 6, 4) -- Change size to fit the model
+    part.Size = Vector3.new(4, 6, 4)
     part.Transparency = 1
     part.Anchored = false
     part.CanCollide = false
@@ -89,6 +105,7 @@ local function createVisualizerPart(model)
     selectionBox.Adornee = part
     selectionBox.Parent = model
 
+    print("[Debug] Visualizer created for model:", model.Name)
     return part
 end
 
@@ -97,10 +114,12 @@ local function removeVisualizerPart(model)
         local visualPart = model:FindFirstChildWhichIsA("Part", true)
         if visualPart then
             visualPart:Destroy()
+            print("[Debug] Visualizer part removed from model:", model.Name)
         end
         local selectionBox = model:FindFirstChildWhichIsA("SelectionBox", true)
         if selectionBox then
             selectionBox:Destroy()
+            print("[Debug] SelectionBox removed from model:", model.Name)
         end
     end
 end
@@ -108,6 +127,7 @@ end
 function punch.start()
     if mouseConnection then return end
     mouseConnection = player:GetMouse().Button1Down:Connect(function()
+        print("[Debug] Mouse button clicked.")
         punchNearestEntity()
     end)
 end
@@ -116,6 +136,7 @@ function punch.stop()
     if mouseConnection then
         mouseConnection:Disconnect()
         mouseConnection = nil
+        print("[Debug] Mouse connection stopped.")
     end
 end
 
@@ -123,11 +144,13 @@ function punch.updateRange(value)
     local rangeValue = tonumber(value)
     if rangeValue then
         punchRange = rangeValue
+        print("[Debug] Punch range updated to:", punchRange)
     end
 end
 
 function punch.toggleVisualizer(callback)
     punchVisualizerEnabled = callback
+    print("[Debug] Visualizer toggled:", callback)
     local nearestEntity = findNearestEntity()
     if punchVisualizerEnabled and nearestEntity then
         createVisualizerPart(nearestEntity)
@@ -138,14 +161,17 @@ end
 
 function punch.toggleAngleCheck(callback)
     punchAngleCheckEnabled = callback
+    print("[Debug] Angle check toggled:", callback)
 end
 
 function punch.toggleIncludeNPCs(callback)
     includeNPCs = callback
+    print("[Debug] Include NPCs toggled:", callback)
 end
 
 function punch.toggleParticle(callback)
     punchParticleEnabled = callback
+    print("[Debug] Particle effect toggled:", callback)
 end
 
 function punch.getRange()
