@@ -17,7 +17,6 @@ local includeNPCs = true
 local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
-local visualizerPart
 local debugEnabled = true
 
 local function debugPrint(...)
@@ -138,11 +137,14 @@ local function createVisualizerPart(targetModel)
         return
     end
 
-    removeVisualizerPart()
+    -- Remove old visualizer if it exists
+    if visualizerPart then
+        visualizerPart:Destroy()
+    end
 
     visualizerPart = Instance.new("Part")
     visualizerPart.Name = "Visualizer"
-    visualizerPart.Size = humanoidRootPart.Size + Vector3.new(1, 1, 1)
+    visualizerPart.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
     visualizerPart.Transparency = 0.5
     visualizerPart.Anchored = true
     visualizerPart.CanCollide = false
