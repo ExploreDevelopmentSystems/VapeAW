@@ -17,6 +17,7 @@ local includeNPCs = true
 local punchParticleEnabled = false
 local wallCheckEnabled = false
 local mouseConnection
+local visualizerPart
 local debugEnabled = true
 
 local function debugPrint(...)
@@ -166,32 +167,38 @@ local function createVisualizerPart(model)
     end
 
     -- Remove old visualizer if it exists
-    removeVisualizerPart(model)
+    removeVisualizerPart()
 
-    local part = Instance.new("Part")
-    part.Name = "Serv"
-    part.Size = humanoidRootPart.Size + Vector3.new(2, 2, 2)
-    part.Transparency = 0.3
-    part.Anchored = false
-    part.CanCollide = false
-    part.Color = Color3.new(1, 0, 0) -- Red color
-    part.Material = Enum.Material.ForceField
-    part.CFrame = humanoidRootPart.CFrame
-    part.Parent = Workspace
-
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = part
-    weld.Part1 = humanoidRootPart
-    weld.Parent = part
+    visualizerPart = Instance.new("Part")
+    visualizerPart.Name = "Visualizer"
+    visualizerPart.Size = humanoidRootPart.Size + Vector3.new(1, 1, 1)
+    visualizerPart.Transparency = 0.5
+    visualizerPart.Anchored = true
+    visualizerPart.CanCollide = false
+    visualizerPart.Color = Color3.new(1, 0, 0) -- Red color
+    visualizerPart.Material = Enum.Material.ForceField
+    visualizerPart.CFrame = humanoidRootPart.CFrame
+    visualizerPart.Parent = Workspace
 
     debugPrint("[Debug] Visualizer created for model:", model.Name)
 
-    -- Remove the visualizer after 0.5 seconds
-    Debris:AddItem(part, 0.5)
+    -- Update the visualizer's position in real-time
+    game:GetService("RunService").Stepped:Connect(function()
+        if visualizerPart and humanoidRootPart then
+            visualizerPart.CFrame = humanoidRootPart.CFrame
+        end
+    end)
+
+    -- Automatically remove the visualizer after 0.5 seconds
+    Debris:AddItem(visualizerPart, 0.5)
 end
 
-local function removeVisualizerPart(model)
-    -- Since visualizer parts are auto-removed, no additional cleanup needed
+local function removeVisualizerPart()
+    if visualizerPart then
+        visualizerPart:Destroy()
+        visualizerPart = nil
+        debugPrint("[Debug] Visualizer part removed.")
+    end
 end
 
 function punch.start()
@@ -215,6 +222,7 @@ function punch.stop()
         mouseConnection = nil
         debugPrint("[Debug] Mouse connection stopped.")
     end
+    removeVisualizerPart()
 end
 
 function punch.updateRange(value)
