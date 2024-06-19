@@ -149,9 +149,13 @@ function tag.toggleAbility(callback)
     debugPrint("[Debug] Ability display toggled:", callback)
 end
 
-function tag.updateBackground(color)
-    backgroundColor = color
-    debugPrint("[Debug] Background color updated:", backgroundColor)
+function tag.updateBackground(val)
+    if typeof(val) == "Color3" then
+        backgroundColor = val
+        debugPrint("[Debug] Background color updated to:", backgroundColor)
+    else
+        warn("[Debug] Invalid color value provided.")
+    end
 end
 
 function tag.updateScale(value)
