@@ -4,9 +4,9 @@ local detector = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("StarterGui")
-local detectionPattern = {0.05, 0, -0.05, 0, 0.05, 0, -0.05, 0} -- Simplified detection pattern
+local detectionPattern = {0.05, 0, -0.05, 0, 0.05, 0, -0.05, 0}
 local localDetectionEnabled = false
-local detectLocalPlayer = false -- Change this to true for local player detection testing
+local detectLocalPlayer = true
 
 local function notify(message)
     CoreGui:SetCore("SendNotification", {
