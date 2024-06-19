@@ -22,8 +22,7 @@ local validModelNames = {
     ["Tree"] = true,
     ["Fan"] = true,
     ["Dispenser"] = true,
-    ["Ballon"] = true,
-    ["Seat"] = true
+    ["Ballon"] = true
 }
 
 local function debugPrint(...)
@@ -37,26 +36,20 @@ local function punchBuilds()
 
     local buildFolder = Workspace:FindFirstChild("Engineer Builds")
     if not buildFolder then
-        debugPrint("[Debug] Engineer Builds folder not found in Workspace.")
-        return
+        return -- Exit if Engineer Builds folder does not exist
     end
 
-    for _, build in ipairs(buildFolder:GetChildren()) do
+    for _, build in ipairs(buildFolder:GetDescendants()) do
         if build:IsA("Model") and validModelNames[build.Name] then
             for _, part in ipairs(build:GetDescendants()) do
                 if part:IsA("BasePart") then
                     local impactPosition = part.Position
                     if punchEvent then
-                        debugPrint("[Debug] Punching part in model:", build.Name, "Part:", part.Name)
                         punchEvent:FireServer(build, impactPosition)
                         task.wait(buildDelay)
-                    else
-                        warn("[Debug] Punch event not found.")
                     end
                 end
             end
-        else
-            debugPrint("[Debug] Non-model or invalid name found in Engineer Builds:", build.Name)
         end
     end
 end
@@ -77,21 +70,18 @@ function build.start()
         task.wait(buildDelay) -- Wait for the configured delay
     end)
     active = true
-    debugPrint("[Debug] Build module started.")
 end
 
 function build.stop()
     if connection then
         connection:Disconnect()
         connection = nil
-        debugPrint("[Debug] Build module connection stopped.")
     end
     active = false
 end
 
 function build.updateDelay(value)
     buildDelay = tonumber(value) or 0.5
-    debugPrint("[Debug] Build delay updated to:", buildDelay)
 end
 
 return build
