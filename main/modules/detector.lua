@@ -1,56 +1,64 @@
 -- Detector Module
 local detector = {}
 
-local player = game.Players.LocalPlayer
-local others = game.Players:GetPlayers()
-local active = false
-local detectConnection
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local detectionRange = 0.02 -- Detection range for the twitch movement
+local detectionInterval = 0.1 -- Interval to check for twitch movements
+local lastPositions = {}
+local detectionEnabled = false
+local detectionConnection
+local detectLocalPlayer = false
 
-local twitchDistance = 0.05 -- Should match the twitch module
-local detectThreshold = 0.01 -- Threshold to account for minor discrepancies
+local notificationCallback
 
-local function isTwitching(targetPosition, originalPosition)
-    return (targetPosition - originalPosition).Magnitude <= (twitchDistance + detectThreshold)
-end
+local function detectTwitch()
+    if not detectionEnabled then return end
 
-local function startDetecting()
-    if detectConnection then return end
-    detectConnection = game:GetService("RunService").Stepped:Connect(function()
-        for _, otherPlayer in pairs(others) do
-            if otherPlayer ~= player then
-                local character = otherPlayer.Character
-                if character and character:FindFirstChild("HumanoidRootPart") then
-                    local humanoidRootPart = character.HumanoidRootPart
-                    local originalPosition = humanoidRootPart.Position
-                    task.wait(0.1)
-                    local newPosition = humanoidRootPart.Position
-                    if isTwitching(newPosition, originalPosition) then
-                        -- Detected another user running the script
-                        warn("[Detector] Another user running the script detected: ", otherPlayer.Name)
-                        -- Optionally, you can kick the other player
-                        -- otherPlayer:Kick("Detected running unauthorized script.")
+    for _, player in pairs(Players:GetPlayers()) do
+        if (player ~= LocalPlayer or detectLocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local currentPos = player.Character.HumanoidRootPart.Position
+            local lastPos = lastPositions[player.UserId]
+
+            if lastPos then
+                local delta = (currentPos - lastPos).Magnitude
+                if delta > detectionRange then
+                    if notificationCallback then
+                        notificationCallback(player.Name)
                     end
+                    print("[Debug] Detected twitch in:", player.Name, "Delta:", delta)
                 end
             end
-        end
-    end)
-end
 
-local function stopDetecting()
-    if detectConnection then
-        detectConnection:Disconnect()
-        detectConnection = nil
+            lastPositions[player.UserId] = currentPos
+        end
     end
 end
 
 function detector.start()
-    active = true
-    startDetecting()
+    if detectionConnection then return end
+    detectionEnabled = true
+    detectionConnection = RunService.Heartbeat:Connect(detectTwitch)
+    print("[Debug] Detector module started.")
 end
 
 function detector.stop()
-    active = false
-    stopDetecting()
+    if detectionConnection then
+        detectionConnection:Disconnect()
+        detectionConnection = nil
+        print("[Debug] Detector module stopped.")
+    end
+    detectionEnabled = false
+end
+
+function detector.setNotificationCallback(callback)
+    notificationCallback = callback
+end
+
+function detector.setDetectLocalPlayer(value)
+    detectLocalPlayer = value
+    print("[Debug] Detect local player set to:", value)
 end
 
 return detector
