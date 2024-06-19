@@ -128,13 +128,13 @@ local function onPlayerRemoving(targetPlayer)
 end
 
 local function onDescendantAdded(descendant)
-    if includeNPCs and descendant:IsA("Model") then
+    if includeNPCs and descendant:IsA("Model") and descendant:FindFirstChild("HumanoidRootPart") then
         onModelAdded(descendant)
     end
 end
 
 local function onDescendantRemoving(descendant)
-    if includeNPCs and descendant:IsA("Model") then
+    if includeNPCs and descendant:IsA("Model") and descendant:FindFirstChild("HumanoidRootPart") then
         removeTagForEntity(descendant)
     end
 end
@@ -154,7 +154,7 @@ function tag.start()
                 end
             end
             if includeNPCs then
-                for _, targetModel in pairs(Workspace:GetDescendants()) do
+                for _, targetModel in pairs(Workspace:GetChildren()) do
                     if targetModel:IsA("Model") and targetModel:FindFirstChild("HumanoidRootPart") and not Players:GetPlayerFromCharacter(targetModel) then
                         updateTagForEntity(targetModel)
                     end
