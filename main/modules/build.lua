@@ -10,6 +10,8 @@ local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and Replica
 local buildDelay = 0.5
 local active = false
 local connection
+local debugEnabled = true
+
 local validModelNames = {
     ["Floor"] = true,
     ["Wall"] = true,
@@ -24,15 +26,18 @@ local validModelNames = {
 }
 
 local function debugPrint(...)
-    -- Debug printing enabled only for internal checks
-    print(...)
+    if debugEnabled then
+        print(...)
+    end
 end
 
 local function punchBuilds()
     if not active or not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
     local buildFolder = Workspace:FindFirstChild("Engineer Builds")
-    if not buildFolder then return end
+    if not buildFolder then
+        return -- Exit if Engineer Builds folder does not exist
+    end
 
     for _, build in ipairs(buildFolder:GetDescendants()) do
         if build:IsA("Model") and validModelNames[build.Name] then
@@ -62,24 +67,21 @@ function build.start()
     character = player.Character or player.CharacterAdded:Wait()
     connection = game:GetService("RunService").Stepped:Connect(function()
         punchBuilds()
-        task.wait(buildDelay)
+        task.wait(buildDelay) -- Wait for the configured delay
     end)
     active = true
-    debugPrint("[Debug] Build module started.")
 end
 
 function build.stop()
     if connection then
         connection:Disconnect()
         connection = nil
-        debugPrint("[Debug] Build connection stopped.")
     end
     active = false
 end
 
 function build.updateDelay(value)
     buildDelay = tonumber(value) or 0.5
-    debugPrint("[Debug] Build delay updated to:", buildDelay)
 end
 
 return build
