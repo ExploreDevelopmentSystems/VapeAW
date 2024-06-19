@@ -54,7 +54,8 @@ local function createTagForPlayer(targetPlayer)
         label.TextColor3 = Color3.new(1, 1, 1)
         label.TextStrokeTransparency = 0
         label.Font = Enum.Font.SourceSans
-        label.TextSize = 14
+        label.TextScaled = true -- Ensure text scales properly with size
+        label.TextSize = 14 -- This is a default and can be overridden by TextScaled
         label.Parent = billboard
 
         tags[targetPlayer] = {
