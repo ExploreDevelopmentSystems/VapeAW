@@ -3,93 +3,54 @@ local detector = {}
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local detectionRange = 0.1
-local patternTolerance = 0.02 
-local detectionEnabled = false
-local detectionConnection
-local detectLocalPlayer = false
+local CoreGui = game:GetService("StarterGui")
+local detectionPattern = {0.05, 0, -0.05, 0, 0.05, 0, -0.05, 0} -- Simplified detection pattern
+local localDetectionEnabled = false
+local detectLocalPlayer = false -- Change this to true for local player detection testing
 
-local pattern = {
-    Vector3.new(-detectionRange, 0, 0), -- left
-    Vector3.new(detectionRange, 0, 0), -- right
-    Vector3.new(0, detectionRange, 0), -- up
-    Vector3.new(0, -detectionRange, 0) -- down
-}
-local patternIndex = 1
-local recentMovements = {}
-local movementTimestamps = {}
-local movementTimeout = 0.1
-local notificationCallback
-
-local function resetPattern(player)
-    patternIndex = 1
-    recentMovements[player.UserId] = nil
-    movementTimestamps[player.UserId] = nil
+local function notify(message)
+    CoreGui:SetCore("SendNotification", {
+        Title = "Script Detection",
+        Text = message,
+        Duration = 5
+    })
 end
 
-local function detectTwitch()
-    if not detectionEnabled then return end
+local function detectTwitchingPlayers()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer or detectLocalPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local rootPart = character.HumanoidRootPart
+                local movementPattern = {}
+                for _, move in ipairs(detectionPattern) do
+                    table.insert(movementPattern, rootPart.Position + Vector3.new(0, 0, move))
+                end
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if (player ~= LocalPlayer or detectLocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local currentPos = player.Character.HumanoidRootPart.Position
-            local lastPos = recentMovements[player.UserId]
-            local lastTimestamp = movementTimestamps[player.UserId]
-            local currentTime = tick()
-
-            if lastPos then
-                local delta = currentPos - lastPos
-                local expectedMovement = pattern[patternIndex]
-
-                if delta:FuzzyEq(expectedMovement, patternTolerance) then
-                    patternIndex = patternIndex + 1
-                    if patternIndex > #pattern then
-                        if notificationCallback then
-                            notificationCallback(player.Name)
-                        end
-                        print("[Debug] Detected unique twitch pattern in:", player.Name)
-                        resetPattern(player) -- Reset after detection
-                    else
-                        movementTimestamps[player.UserId] = currentTime
+                -- Check if the player's movement matches the pattern
+                for i = 1, #movementPattern - 1 do
+                    local currentPos = movementPattern[i]
+                    local nextPos = movementPattern[i + 1]
+                    if (currentPos - nextPos).Magnitude < 0.01 then
+                        notify(player.Name .. " is using the script.")
+                        break
                     end
-                else
-                    resetPattern(player) -- Reset if pattern doesn't match
                 end
             end
-
-            if not lastTimestamp or currentTime - lastTimestamp > movementTimeout then
-                resetPattern(player) -- Reset if movement is too slow
-            end
-
-            recentMovements[player.UserId] = currentPos
         end
     end
 end
 
 function detector.start()
-    if detectionConnection then return end
-    detectionEnabled = true
-    detectionConnection = RunService.Heartbeat:Connect(detectTwitch)
-    print("[Debug] Detector module started.")
+    RunService.Stepped:Connect(detectTwitchingPlayers)
 end
 
-function detector.stop()
-    if detectionConnection then
-        detectionConnection:Disconnect()
-        detectionConnection = nil
-        print("[Debug] Detector module stopped.")
-    end
-    detectionEnabled = false
+function detector.enableLocalDetection()
+    detectLocalPlayer = true
 end
 
-function detector.setNotificationCallback(callback)
-    notificationCallback = callback
-end
-
-function detector.setDetectLocalPlayer(value)
-    detectLocalPlayer = value
-    print("[Debug] Detect local player set to:", value)
+function detector.disableLocalDetection()
+    detectLocalPlayer = false
 end
 
 return detector
