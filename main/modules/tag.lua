@@ -13,6 +13,7 @@ local showBGEnabled = true
 local displayEnabled = false
 local distanceEnabled = false
 local abilityEnabled = false
+local includeNPCs = false
 local tags = {}
 local tagScale = 1
 local tagHeight = 2
@@ -31,11 +32,10 @@ local function getPlayerDistance(targetPlayer)
     return math.huge  -- Return a large value if the distance can't be calculated
 end
 
-local function createTagForPlayer(targetPlayer)
-    if targetPlayer == player then return end  -- Exclude local player
+local function createTagForEntity(targetModel)
+    if targetModel == player.Character then return end  -- Exclude local player
 
-    local targetCharacter = targetPlayer.Character
-    local head = targetCharacter and targetCharacter:FindFirstChild("Head")
+    local head = targetModel:FindFirstChild("Head") or targetModel:FindFirstChild("HumanoidRootPart")
 
     if head then
         local billboard = Instance.new("BillboardGui")
@@ -54,62 +54,87 @@ local function createTagForPlayer(targetPlayer)
         label.TextColor3 = Color3.new(1, 1, 1)
         label.TextStrokeTransparency = 0
         label.Font = Enum.Font.SourceSans
-        label.TextScaled = true -- Ensure text scales properly with size
-        label.TextSize = 14 -- This is a default and can be overridden by TextScaled
+        label.TextScaled = true
+        label.TextSize = 14
         label.Parent = billboard
 
-        tags[targetPlayer] = {
+        tags[targetModel] = {
             billboard = billboard,
             label = label,
             originalTextLabel = head:FindFirstChild("Name Tag") and head["Name Tag"]:FindFirstChild("TextLabel")
         }
 
-        if deleteOGEnabled and tags[targetPlayer].originalTextLabel then
-            tags[targetPlayer].originalTextLabel.TextTransparency = 1
+        if deleteOGEnabled and tags[targetModel].originalTextLabel then
+            tags[targetModel].originalTextLabel.TextTransparency = 1
         end
     end
 end
 
-local function updateTagForPlayer(targetPlayer)
-    if targetPlayer == player then return end  -- Exclude local player
+local function updateTagForEntity(targetModel)
+    if targetModel == player.Character then return end  -- Exclude local player
 
-    local targetCharacter = targetPlayer.Character
-    local head = targetCharacter and targetCharacter:FindFirstChild("Head")
+    local head = targetModel:FindFirstChild("Head") or targetModel:FindFirstChild("HumanoidRootPart")
 
-    if head and tags[targetPlayer] then
-        local label = tags[targetPlayer].label
-        local name = displayEnabled and targetPlayer.DisplayName or targetPlayer.Name
-        local ability = targetPlayer:FindFirstChild("leaderstats") and targetPlayer.leaderstats:FindFirstChild("Ability") and targetPlayer.leaderstats.Ability.Value or "N/A"
-        local distance = distanceEnabled and ("Distance: " .. math.floor(getPlayerDistance(targetPlayer))) or ""
+    if head and tags[targetModel] then
+        local label = tags[targetModel].label
+        local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
+        local name = targetPlayer and (displayEnabled and targetPlayer.DisplayName or targetPlayer.Name) or "NPC"
+        local ability = targetPlayer and targetPlayer:FindFirstChild("leaderstats") and targetPlayer.leaderstats:FindFirstChild("Ability") and targetPlayer.leaderstats.Ability.Value or "N/A"
+        local distance = distanceEnabled and ("Distance: " .. math.floor(getPlayerDistance(targetPlayer or targetModel))) or ""
 
         label.Text = name .. (abilityEnabled and ("\nAbility: " .. ability) or "") .. (distanceEnabled and ("\n" .. distance) or "")
     end
 end
 
-local function removeTagForPlayer(targetPlayer)
-    if tags[targetPlayer] then
-        local head = targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head")
-        if head and tags[targetPlayer].originalTextLabel then
-            tags[targetPlayer].originalTextLabel.TextTransparency = 0
+local function removeTagForEntity(targetModel)
+    if tags[targetModel] then
+        local head = targetModel:FindFirstChild("Head") or targetModel:FindFirstChild("HumanoidRootPart")
+        if head and tags[targetModel].originalTextLabel then
+            tags[targetModel].originalTextLabel.TextTransparency = 0
         end
-        tags[targetPlayer].billboard:Destroy()
-        tags[targetPlayer] = nil
+        tags[targetModel].billboard:Destroy()
+        tags[targetModel] = nil
+    end
+end
+
+local function onCharacterAdded(targetPlayer)
+    local targetModel = targetPlayer.Character or targetPlayer.CharacterAdded:Wait()
+    createTagForEntity(targetModel)
+    updateTagForEntity(targetModel)
+end
+
+local function onModelAdded(targetModel)
+    if targetModel:IsA("Model") and targetModel:FindFirstChild("HumanoidRootPart") and not Players:GetPlayerFromCharacter(targetModel) then
+        createTagForEntity(targetModel)
+        updateTagForEntity(targetModel)
     end
 end
 
 local function onPlayerAdded(targetPlayer)
     targetPlayer.CharacterAdded:Connect(function()
-        createTagForPlayer(targetPlayer)
-        updateTagForPlayer(targetPlayer)
+        onCharacterAdded(targetPlayer)
     end)
     if targetPlayer.Character then
-        createTagForPlayer(targetPlayer)
-        updateTagForPlayer(targetPlayer)
+        onCharacterAdded(targetPlayer)
     end
 end
 
 local function onPlayerRemoving(targetPlayer)
-    removeTagForPlayer(targetPlayer)
+    if targetPlayer.Character then
+        removeTagForEntity(targetPlayer.Character)
+    end
+end
+
+local function onDescendantAdded(descendant)
+    if includeNPCs and descendant:IsA("Model") then
+        onModelAdded(descendant)
+    end
+end
+
+local function onDescendantRemoving(descendant)
+    if includeNPCs and descendant:IsA("Model") then
+        removeTagForEntity(descendant)
+    end
 end
 
 function tag.start()
@@ -121,7 +146,12 @@ function tag.start()
     tagConnection = RunService.Stepped:Connect(function()
         for _, targetPlayer in pairs(Players:GetPlayers()) do
             if targetPlayer ~= player then
-                updateTagForPlayer(targetPlayer)
+                updateTagForEntity(targetPlayer.Character)
+            end
+        end
+        if includeNPCs then
+            for _, targetModel in pairs(Workspace:GetDescendants()) do
+                onModelAdded(targetModel)
             end
         end
     end)
@@ -130,6 +160,10 @@ function tag.start()
     end
     Players.PlayerAdded:Connect(onPlayerAdded)
     Players.PlayerRemoving:Connect(onPlayerRemoving)
+    if includeNPCs then
+        Workspace.DescendantAdded:Connect(onDescendantAdded)
+        Workspace.DescendantRemoving:Connect(onDescendantRemoving)
+    end
     debugPrint("[Debug] Tag module started.")
 end
 
@@ -139,7 +173,16 @@ function tag.stop()
         tagConnection = nil
     end
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        removeTagForPlayer(targetPlayer)
+        if targetPlayer.Character then
+            removeTagForEntity(targetPlayer.Character)
+        end
+    end
+    if includeNPCs then
+        for _, targetModel in pairs(Workspace:GetDescendants()) do
+            if not Players:GetPlayerFromCharacter(targetModel) then
+                removeTagForEntity(targetModel)
+            end
+        end
     end
     debugPrint("[Debug] Tag module stopped.")
 end
@@ -189,6 +232,11 @@ end
 function tag.toggleAbility(callback)
     abilityEnabled = callback
     debugPrint("[Debug] Ability toggled:", callback)
+end
+
+function tag.toggleIncludeNPCs(callback)
+    includeNPCs = callback
+    debugPrint("[Debug] Include NPCs toggled:", callback)
 end
 
 function tag.updateScale(value)
