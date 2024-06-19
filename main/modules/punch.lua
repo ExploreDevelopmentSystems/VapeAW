@@ -108,8 +108,9 @@ local function computeImpactPosition(targetModel)
     local rightHand = character and character:FindFirstChild("RightHand")
     if not rightHand then return humanoidRootPart.Position end
 
-    -- Raycast from the local player's right hand to the target's torso (or other random limb)
-    local targetLimb = getRandomLimb(targetModel) or humanoidRootPart
+    local targetLimb = getRandomLimb(targetModel)
+    if not targetLimb then return humanoidRootPart.Position end
+
     local directionToTarget = (targetLimb.Position - rightHand.Position).Unit
     local distance = (targetLimb.Position - rightHand.Position).Magnitude
     local rayParams = RaycastParams.new()
@@ -117,8 +118,8 @@ local function computeImpactPosition(targetModel)
     rayParams.FilterDescendantsInstances = {character}
 
     local ray = Workspace:Raycast(rightHand.Position, directionToTarget * distance, rayParams)
-    local impactPosition
 
+    local impactPosition
     if ray then
         impactPosition = ray.Position
     else
