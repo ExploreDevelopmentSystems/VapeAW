@@ -22,6 +22,15 @@ local function debugPrint(...)
     print(...)
 end
 
+local function getPlayerDistance(targetPlayer)
+    local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local targetRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if localRootPart and targetRootPart then
+        return (localRootPart.Position - targetRootPart.Position).Magnitude
+    end
+    return math.huge  -- Return a large value if the distance can't be calculated
+end
+
 local function createTagForPlayer(targetPlayer)
     if targetPlayer == player then return end  -- Exclude local player
 
@@ -70,7 +79,7 @@ local function updateTagForPlayer(targetPlayer)
         local label = tags[targetPlayer].label
         local name = displayEnabled and targetPlayer.DisplayName or targetPlayer.Name
         local ability = targetPlayer:FindFirstChild("leaderstats") and targetPlayer.leaderstats:FindFirstChild("Ability") and targetPlayer.leaderstats.Ability.Value or "N/A"
-        local distance = distanceEnabled and ("Distance: " .. math.floor((player:FindFirstChild("HumanoidRootPart").Position - head.Position).Magnitude)) or ""
+        local distance = distanceEnabled and ("Distance: " .. math.floor(getPlayerDistance(targetPlayer))) or ""
 
         label.Text = name .. (abilityEnabled and ("\nAbility: " .. ability) or "") .. (distanceEnabled and ("\n" .. distance) or "")
     end
@@ -104,6 +113,10 @@ end
 
 function tag.start()
     if tagConnection then return end
+    character = player.Character or player.CharacterAdded:Wait()
+    player.CharacterAdded:Connect(function(newCharacter)
+        character = newCharacter
+    end)
     tagConnection = RunService.Stepped:Connect(function()
         for _, targetPlayer in pairs(Players:GetPlayers()) do
             if targetPlayer ~= player then
