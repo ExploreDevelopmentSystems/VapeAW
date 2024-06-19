@@ -82,6 +82,7 @@ function reach.start()
         end
     end)
     active = true
+    debugPrint("[Debug] Reach module started.")
 end
 
 function reach.stop()
@@ -94,12 +95,14 @@ function reach.stop()
         end
     end
     active = false
+    debugPrint("[Debug] Reach module stopped.")
 end
 
 function reach.update(value)
     local reachValue = tonumber(value)
     if reachValue then
         headSize = reachValue
+        debugPrint("[Debug] Reach updated to:", reachValue)
     end
 end
 
@@ -109,10 +112,12 @@ function reach.toggleVisualizer(callback)
         revertReachChanges(lastVisualizedPlayer)
         lastVisualizedPlayer = nil
     end
+    debugPrint("[Debug] Visualizer toggled:", callback)
 end
 
 function reach.toggleAngleCheck(callback)
     angleCheckEnabled = callback
+    debugPrint("[Debug] Angle check toggled:", callback)
 end
 
 function reach.getHeadSize()
