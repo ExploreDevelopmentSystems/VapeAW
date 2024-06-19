@@ -17,6 +17,8 @@ local includeNPCs = false
 local tags = {}
 local tagScale = 1
 local tagHeight = 2
+local updateInterval = 0.5 -- Default update interval
+local lastUpdate = 0
 
 local function debugPrint(...)
     -- Debug printing enabled only for internal checks
@@ -41,7 +43,7 @@ local function createTagForEntity(targetModel)
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "CustomNameTag"
         billboard.Adornee = head
-        billboard.Size = UDim2.new(0, 100 * tagScale, 0, 50 * tagScale)
+        billboard.Size = UDim2.new(0, 100 * tagScale, 0, 30 * tagScale)
         billboard.StudsOffset = Vector3.new(0, tagHeight, 0)
         billboard.AlwaysOnTop = priorityEnabled
         billboard.Parent = head
@@ -143,15 +145,20 @@ function tag.start()
     player.CharacterAdded:Connect(function(newCharacter)
         character = newCharacter
     end)
-    tagConnection = RunService.Stepped:Connect(function()
-        for _, targetPlayer in pairs(Players:GetPlayers()) do
-            if targetPlayer ~= player then
-                updateTagForEntity(targetPlayer.Character)
+    tagConnection = RunService.Stepped:Connect(function(time, deltaTime)
+        if tick() - lastUpdate >= updateInterval then
+            lastUpdate = tick()
+            for _, targetPlayer in pairs(Players:GetPlayers()) do
+                if targetPlayer ~= player then
+                    updateTagForEntity(targetPlayer.Character)
+                end
             end
-        end
-        if includeNPCs then
-            for _, targetModel in pairs(Workspace:GetDescendants()) do
-                onModelAdded(targetModel)
+            if includeNPCs then
+                for _, targetModel in pairs(Workspace:GetDescendants()) do
+                    if targetModel:IsA("Model") and targetModel:FindFirstChild("HumanoidRootPart") and not Players:GetPlayerFromCharacter(targetModel) then
+                        updateTagForEntity(targetModel)
+                    end
+                end
             end
         end
     end)
@@ -242,7 +249,7 @@ end
 function tag.updateScale(value)
     tagScale = tonumber(value)
     for _, data in pairs(tags) do
-        data.billboard.Size = UDim2.new(0, 100 * tagScale, 0, 50 * tagScale)
+        data.billboard.Size = UDim2.new(0, 100 * tagScale, 0, 30 * tagScale)
     end
     debugPrint("[Debug] Tag scale updated to:", tagScale)
 end
@@ -253,6 +260,11 @@ function tag.updateHeight(value)
         data.billboard.StudsOffset = Vector3.new(0, tagHeight, 0)
     end
     debugPrint("[Debug] Tag height updated to:", tagHeight)
+end
+
+function tag.updateInterval(value)
+    updateInterval = tonumber(value)
+    debugPrint("[Debug] Update interval set to:", updateInterval)
 end
 
 return tag
