@@ -6,12 +6,25 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local character
-local buildFolder = Workspace:FindFirstChild("Engineer Builds") and Workspace["Engineer Builds"]:FindFirstChild("Build Model")
 local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 local buildDelay = 0.5
 local active = false
 local connection
 local debugEnabled = true
+
+local validModelNames = {
+    ["Floor"] = true,
+    ["Wall"] = true,
+    ["Wheel"] = true,
+    ["Seat"] = true,
+    ["Driver's Seat"] = true,
+    ["Teleporter"] = true,
+    ["Tree"] = true,
+    ["Fan"] = true,
+    ["Dispenser"] = true,
+    ["Ballon"] = true,
+    ["Seat"] = true
+}
 
 local function debugPrint(...)
     if debugEnabled then
@@ -21,23 +34,29 @@ end
 
 local function punchBuilds()
     if not active or not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    local buildFolder = Workspace:FindFirstChild("Engineer Builds")
     if not buildFolder then
-        debugPrint("[Debug] Build folder not found in Workspace.")
+        debugPrint("[Debug] Engineer Builds folder not found in Workspace.")
         return
     end
 
     for _, build in ipairs(buildFolder:GetChildren()) do
-        if build:IsA("Model") then
-            local impactPosition = build:GetModelCFrame().p
-            if punchEvent then
-                debugPrint("[Debug] Punching build model:", build.Name)
-                punchEvent:FireServer(build, impactPosition)
-                task.wait(buildDelay) -- Wait for the configured delay
-            else
-                warn("[Debug] Punch event not found.")
+        if build:IsA("Model") and validModelNames[build.Name] then
+            for _, part in ipairs(build:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    local impactPosition = part.Position
+                    if punchEvent then
+                        debugPrint("[Debug] Punching part in model:", build.Name, "Part:", part.Name)
+                        punchEvent:FireServer(build, impactPosition)
+                        task.wait(buildDelay)
+                    else
+                        warn("[Debug] Punch event not found.")
+                    end
+                end
             end
         else
-            debugPrint("[Debug] Non-model found in build folder:", build.Name)
+            debugPrint("[Debug] Non-model or invalid name found in Engineer Builds:", build.Name)
         end
     end
 end
