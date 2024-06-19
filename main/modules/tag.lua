@@ -1,91 +1,196 @@
--- Tag Module UI
-local tag = Render.CreateOptionsButton({
-    Name = "Tag",
-    Function = function(callback)
-        if callback then
-            modules.tag.start()
-        else
-            modules.tag.stop()
+-- Tag Module
+local tag = {}
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local character
+local tagConnection
+local priorityEnabled = false
+local deleteOGEnabled = false
+local showBGEnabled = true
+local displayEnabled = false
+local distanceEnabled = false
+local abilityEnabled = false
+local tags = {}
+local tagScale = 1
+local tagHeight = 2
+
+local function debugPrint(...)
+    -- Debug printing enabled only for internal checks
+    print(...)
+end
+
+local function createTagForPlayer(targetPlayer)
+    if targetPlayer == player then return end  -- Exclude local player
+
+    local targetCharacter = targetPlayer.Character
+    local head = targetCharacter and targetCharacter:FindFirstChild("Head")
+
+    if head then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "CustomNameTag"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 100 * tagScale, 0, 50 * tagScale)
+        billboard.StudsOffset = Vector3.new(0, tagHeight, 0)
+        billboard.AlwaysOnTop = priorityEnabled
+        billboard.Parent = head
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = showBGEnabled and 0.5 or 1
+        label.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+        label.Text = ""
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 0
+        label.Font = Enum.Font.SourceSans
+        label.TextSize = 14
+        label.Parent = billboard
+
+        tags[targetPlayer] = {
+            billboard = billboard,
+            label = label,
+            originalTextLabel = head:FindFirstChild("Name Tag") and head["Name Tag"]:FindFirstChild("TextLabel")
+        }
+
+        if deleteOGEnabled and tags[targetPlayer].originalTextLabel then
+            tags[targetPlayer].originalTextLabel.TextTransparency = 1
         end
-    end,
-    HoverText = "Creates a nametag above players.",
-    Default = false
-})
+    end
+end
 
-tag.CreateToggle({
-    Name = "Priority",
-    HoverText = "Render through walls if enabled. Use raycast if disabled.",
-    Function = function(callback)
-        modules.tag.togglePriority(callback)
-    end,
-    Default = false
-})
+local function updateTagForPlayer(targetPlayer)
+    if targetPlayer == player then return end  -- Exclude local player
 
-tag.CreateToggle({
-    Name = "Delete OG",
-    HoverText = "Makes the original nametag invisible.",
-    Function = function(callback)
-        modules.tag.toggleDeleteOG(callback)
-    end,
-    Default = false
-})
+    local targetCharacter = targetPlayer.Character
+    local head = targetCharacter and targetCharacter:FindFirstChild("Head")
 
-tag.CreateToggle({
-    Name = "Show BG",
-    HoverText = "Toggle the background of the nametag.",
-    Function = function(callback)
-        modules.tag.toggleShowBG(callback)
-    end,
-    Default = true
-})
+    if head and tags[targetPlayer] then
+        local label = tags[targetPlayer].label
+        local name = displayEnabled and targetPlayer.DisplayName or targetPlayer.Name
+        local ability = targetPlayer:FindFirstChild("leaderstats") and targetPlayer.leaderstats:FindFirstChild("Ability") and targetPlayer.leaderstats.Ability.Value or "N/A"
+        local distance = distanceEnabled and ("Distance: " .. math.floor((player:FindFirstChild("HumanoidRootPart").Position - head.Position).Magnitude)) or ""
 
-tag.CreateToggle({
-    Name = "Display",
-    HoverText = "Show the display name instead of the username.",
-    Function = function(callback)
-        modules.tag.toggleDisplay(callback)
-    end,
-    Default = false
-})
+        label.Text = name .. (abilityEnabled and ("\nAbility: " .. ability) or "") .. (distanceEnabled and ("\n" .. distance) or "")
+    end
+end
 
-tag.CreateToggle({
-    Name = "Distance",
-    HoverText = "Show the distance to the player.",
-    Function = function(callback)
-        modules.tag.toggleDistance(callback)
-    end,
-    Default = false
-})
+local function removeTagForPlayer(targetPlayer)
+    if tags[targetPlayer] then
+        local head = targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head")
+        if head and tags[targetPlayer].originalTextLabel then
+            tags[targetPlayer].originalTextLabel.TextTransparency = 0
+        end
+        tags[targetPlayer].billboard:Destroy()
+        tags[targetPlayer] = nil
+    end
+end
 
-tag.CreateToggle({
-    Name = "Ability",
-    HoverText = "Show the player's Ability value.",
-    Function = function(callback)
-        modules.tag.toggleAbility(callback)
-    end,
-    Default = false
-})
+local function onPlayerAdded(targetPlayer)
+    targetPlayer.CharacterAdded:Connect(function()
+        createTagForPlayer(targetPlayer)
+        updateTagForPlayer(targetPlayer)
+    end)
+    if targetPlayer.Character then
+        createTagForPlayer(targetPlayer)
+        updateTagForPlayer(targetPlayer)
+    end
+end
 
-tag.CreateSlider({
-    Name = "Scale",
-    Min = 0.5,
-    Max = 3,
-    Function = function(val)
-        modules.tag.updateScale(val)
-    end,
-    HoverText = "Scale of the nametag.",
-    Default = 1,
-    Double = 1
-})
+local function onPlayerRemoving(targetPlayer)
+    removeTagForPlayer(targetPlayer)
+end
 
-tag.CreateSlider({
-    Name = "Height",
-    Min = 0,
-    Max = 5,
-    Function = function(val)
-        modules.tag.updateHeight(val)
-    end,
-    HoverText = "Height of the nametag above the player.",
-    Default = 2,
-    Double = 1
-})
+function tag.start()
+    if tagConnection then return end
+    tagConnection = RunService.Stepped:Connect(function()
+        for _, targetPlayer in pairs(Players:GetPlayers()) do
+            if targetPlayer ~= player then
+                updateTagForPlayer(targetPlayer)
+            end
+        end
+    end)
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        onPlayerAdded(targetPlayer)
+    end
+    Players.PlayerAdded:Connect(onPlayerAdded)
+    Players.PlayerRemoving:Connect(onPlayerRemoving)
+    debugPrint("[Debug] Tag module started.")
+end
+
+function tag.stop()
+    if tagConnection then
+        tagConnection:Disconnect()
+        tagConnection = nil
+    end
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        removeTagForPlayer(targetPlayer)
+    end
+    debugPrint("[Debug] Tag module stopped.")
+end
+
+function tag.togglePriority(callback)
+    priorityEnabled = callback
+    for _, data in pairs(tags) do
+        data.billboard.AlwaysOnTop = priorityEnabled
+    end
+    debugPrint("[Debug] Priority toggled:", callback)
+end
+
+function tag.toggleDeleteOG(callback)
+    deleteOGEnabled = callback
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer.Character then
+            local head = targetPlayer.Character:FindFirstChild("Head")
+            if head then
+                local originalTextLabel = head:FindFirstChild("Name Tag") and head["Name Tag"]:FindFirstChild("TextLabel")
+                if originalTextLabel then
+                    originalTextLabel.TextTransparency = callback and 1 or 0
+                end
+            end
+        end
+    end
+    debugPrint("[Debug] Delete OG toggled:", callback)
+end
+
+function tag.toggleShowBG(callback)
+    showBGEnabled = callback
+    for _, data in pairs(tags) do
+        data.label.BackgroundTransparency = showBGEnabled and 0.5 or 1
+    end
+    debugPrint("[Debug] Show BG toggled:", callback)
+end
+
+function tag.toggleDisplay(callback)
+    displayEnabled = callback
+    debugPrint("[Debug] Display toggled:", callback)
+end
+
+function tag.toggleDistance(callback)
+    distanceEnabled = callback
+    debugPrint("[Debug] Distance toggled:", callback)
+end
+
+function tag.toggleAbility(callback)
+    abilityEnabled = callback
+    debugPrint("[Debug] Ability toggled:", callback)
+end
+
+function tag.updateScale(value)
+    tagScale = tonumber(value)
+    for _, data in pairs(tags) do
+        data.billboard.Size = UDim2.new(0, 100 * tagScale, 0, 50 * tagScale)
+    end
+    debugPrint("[Debug] Tag scale updated to:", tagScale)
+end
+
+function tag.updateHeight(value)
+    tagHeight = tonumber(value)
+    for _, data in pairs(tags) do
+        data.billboard.StudsOffset = Vector3.new(0, tagHeight, 0)
+    end
+    debugPrint("[Debug] Tag height updated to:", tagHeight)
+end
+
+return tag
