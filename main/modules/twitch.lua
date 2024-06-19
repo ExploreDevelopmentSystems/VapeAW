@@ -1,39 +1,43 @@
 -- Twitch Module
 local twitch = {}
 
-local Players = game:GetService("Players")
+local player = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = game.Workspace.CurrentCamera
-local twitchEnabled = false
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local active = false
+local movementOffset = 0.1 -- Small movement offset
+local interval = 0.02 -- Time between movements
+local camera = game.Workspace.CurrentCamera
 local twitchConnection
 
-local function counterCameraMovement(originalPosition)
-    -- Calculate the counter movement
-    local delta = originalPosition - LocalPlayer.Character.HumanoidRootPart.Position
-    Camera.CFrame = Camera.CFrame * CFrame.new(delta.X, delta.Y, delta.Z)
-end
+local sequence = {
+    Vector3.new(-movementOffset, 0, 0), -- left
+    Vector3.new(0, movementOffset, 0), -- up
+    Vector3.new(movementOffset, 0, 0), -- right
+    Vector3.new(0, -movementOffset, 0) -- down
+}
+local sequenceIndex = 1
 
-local function applyTwitch()
-    if not twitchEnabled then return end
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-    
-    -- Save the original camera position
-    local originalPosition = Camera.CFrame.Position
+local function performTwitch()
+    if not active then return end
 
-    -- Apply the twitch effect
-    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0.02, 0, 0)
-    task.wait(0.02)
-    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(-0.02, 0, 0)
+    local offset = sequence[sequenceIndex]
+    humanoidRootPart.CFrame = humanoidRootPart.CFrame + offset
 
-    -- Apply counter camera movement
-    counterCameraMovement(originalPosition)
+    -- Counter camera movement to minimize visual shake
+    camera.CFrame = camera.CFrame - offset
+
+    sequenceIndex = (sequenceIndex % #sequence) + 1
 end
 
 function twitch.start()
     if twitchConnection then return end
-    twitchEnabled = true
-    twitchConnection = RunService.Heartbeat:Connect(applyTwitch)
+    active = true
+    twitchConnection = RunService.Heartbeat:Connect(function()
+        performTwitch()
+        wait(interval)
+    end)
     print("[Debug] Twitch module started.")
 end
 
@@ -43,7 +47,7 @@ function twitch.stop()
         twitchConnection = nil
         print("[Debug] Twitch module stopped.")
     end
-    twitchEnabled = false
+    active = false
 end
 
 return twitch
