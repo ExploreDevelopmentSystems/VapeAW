@@ -1,122 +1,96 @@
--- Reach Module
-local reach = {}
+-- Velocity Module
+local velocity = {}
 
 local player = game.Players.LocalPlayer
 local character
-local headSize = 20
-local visualizerEnabled = false
-local angleCheckEnabled = false
-local lastVisualizedPlayer
-local reachConnection
+local horizontalPercent = 1
+local verticalPercent = 1
+local velocityConnection
+local originalForces = {}
 local active = false
 
-local function revertReachChanges(player)
-    local rootPart = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        rootPart.Size = Vector3.new(2, 2, 1)
-        rootPart.Transparency = 1
-        rootPart.BrickColor = BrickColor.new("Medium stone grey")
-        rootPart.Material = Enum.Material.Plastic
-        rootPart.CanCollide = true
-    end
-end
+local function suppressAndApplyForces()
+    if not character or not active then return end
 
-local function getClosestPlayer()
-    local closestPlayer
-    local shortestDistance = math.huge
-    local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
-
-    if not localRootPart then return nil end
-
-    for _, v in ipairs(game.Players:GetPlayers()) do
-        local targetRootPart = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
-        if v ~= player and targetRootPart then
-            local distance = (localRootPart.Position - targetRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                if angleCheckEnabled then
-                    local direction = (targetRootPart.Position - localRootPart.Position).Unit
-                    local forward = localRootPart.CFrame.LookVector
-                    if forward:Dot(direction) > 0 then
-                        closestPlayer = v
-                        shortestDistance = distance
-                    end
-                else
-                    closestPlayer = v
-                    shortestDistance = distance
-                end
+    for _, instance in pairs(character:GetDescendants()) do
+        if instance:IsA("BodyVelocity") or instance:IsA("BodyForce") then
+            if not originalForces[instance] then
+                originalForces[instance] = {
+                    velocity = instance:IsA("BodyVelocity") and instance.Velocity or Vector3.new(0, 0, 0),
+                    force = instance:IsA("BodyForce") and instance.Force or Vector3.new(0, 0, 0)
+                }
+            end
+            if instance:IsA("BodyVelocity") then
+                instance.Velocity = Vector3.new(
+                    originalForces[instance].velocity.X * horizontalPercent,
+                    originalForces[instance].velocity.Y * verticalPercent,
+                    originalForces[instance].velocity.Z * horizontalPercent
+                )
+            elseif instance:IsA("BodyForce") then
+                instance.Force = Vector3.new(
+                    originalForces[instance].force.X * horizontalPercent,
+                    originalForces[instance].force.Y * verticalPercent,
+                    originalForces[instance].force.Z * horizontalPercent
+                )
             end
         end
     end
-
-    return closestPlayer
 end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
 end
 
-function reach.start()
-    if reachConnection then return end
+function velocity.start()
+    if velocityConnection then return end
     player.CharacterAdded:Connect(onCharacterAdded)
     character = player.Character or player.CharacterAdded:Wait()
-    reachConnection = game:GetService("RunService").Stepped:Connect(function()
-        if not active then return end
-
-        local closestPlayer = getClosestPlayer()
-
-        if lastVisualizedPlayer and lastVisualizedPlayer ~= closestPlayer then
-            revertReachChanges(lastVisualizedPlayer)
-        end
-
-        local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local targetRootPart = closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-        if localRootPart and targetRootPart then
-            targetRootPart.Size = Vector3.new(headSize, headSize, headSize)
-            targetRootPart.Transparency = visualizerEnabled and 0.5 or 1
-            targetRootPart.BrickColor = BrickColor.new("Medium stone grey")
-            targetRootPart.Material = Enum.Material.ForceField
-            targetRootPart.CanCollide = false
-
-            lastVisualizedPlayer = closestPlayer
-        end
-    end)
+    velocityConnection = game:GetService("RunService").Stepped:Connect(suppressAndApplyForces)
     active = true
+    debugPrint("[Debug] Velocity module started.")
 end
 
-function reach.stop()
-    if reachConnection then
-        reachConnection:Disconnect()
-        reachConnection = nil
-        if lastVisualizedPlayer then
-            revertReachChanges(lastVisualizedPlayer)
-            lastVisualizedPlayer = nil
+function velocity.stop()
+    if velocityConnection then
+        velocityConnection:Disconnect()
+        velocityConnection = nil
+        for instance, original in pairs(originalForces) do
+            if instance and instance.Parent then
+                if instance:IsA("BodyVelocity") then
+                    instance.Velocity = original.velocity
+                elseif instance:IsA("BodyForce") then
+                    instance.Force = original.force
+                end
+            end
         end
+        originalForces = {}
     end
     active = false
+    debugPrint("[Debug] Velocity module stopped.")
 end
 
-function reach.update(value)
-    local reachValue = tonumber(value)
-    if reachValue then
-        headSize = reachValue
+function velocity.updateHorizontal(value)
+    local percent = tonumber(value) / 100
+    if percent then
+        horizontalPercent = percent
+        debugPrint("[Debug] Horizontal velocity updated to:", value)
     end
 end
 
-function reach.toggleVisualizer(callback)
-    visualizerEnabled = callback
-    if not callback and lastVisualizedPlayer then
-        revertReachChanges(lastVisualizedPlayer)
-        lastVisualizedPlayer = nil
+function velocity.updateVertical(value)
+    local percent = tonumber(value) / 100
+    if percent then
+        verticalPercent = percent
+        debugPrint("[Debug] Vertical velocity updated to:", value)
     end
 end
 
-function reach.toggleAngleCheck(callback)
-    angleCheckEnabled = callback
+function velocity.getHorizontalPercent()
+    return horizontalPercent
 end
 
-function reach.getHeadSize()
-    return headSize
+function velocity.getVerticalPercent()
+    return verticalPercent
 end
 
-return reach
+return velocity
