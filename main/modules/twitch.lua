@@ -13,8 +13,8 @@ local twitchConnection
 
 local sequence = {
     Vector3.new(-movementOffset, 0, 0), -- left
-    Vector3.new(0, movementOffset, 0), -- up
     Vector3.new(movementOffset, 0, 0), -- right
+    Vector3.new(0, movementOffset, 0), -- up
     Vector3.new(0, -movementOffset, 0) -- down
 }
 local sequenceIndex = 1
@@ -29,6 +29,11 @@ local function performTwitch()
     camera.CFrame = camera.CFrame - offset
 
     sequenceIndex = (sequenceIndex % #sequence) + 1
+
+    -- Stop twitching after completing the sequence
+    if sequenceIndex == 1 then
+        twitch.stop()
+    end
 end
 
 function twitch.start()
