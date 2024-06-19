@@ -5,12 +5,19 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local detectionRange = 0.02 -- Detection range for the twitch movement
-local detectionInterval = 0.1 -- Interval to check for twitch movements
-local lastPositions = {}
+local patternTolerance = 0.02 -- Tolerance for pattern matching
 local detectionEnabled = false
 local detectionConnection
 local detectLocalPlayer = false
 
+local pattern = {
+    Vector3.new(-detectionRange, 0, 0), -- left
+    Vector3.new(0, detectionRange, 0), -- up
+    Vector3.new(detectionRange, 0, 0), -- right
+    Vector3.new(0, -detectionRange, 0) -- down
+}
+local patternIndex = 1
+local recentMovements = {}
 local notificationCallback
 
 local function detectTwitch()
@@ -19,19 +26,25 @@ local function detectTwitch()
     for _, player in pairs(Players:GetPlayers()) do
         if (player ~= LocalPlayer or detectLocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local currentPos = player.Character.HumanoidRootPart.Position
-            local lastPos = lastPositions[player.UserId]
+            local lastPos = recentMovements[player.UserId]
 
             if lastPos then
-                local delta = (currentPos - lastPos).Magnitude
-                if delta > detectionRange then
-                    if notificationCallback then
-                        notificationCallback(player.Name)
+                local delta = currentPos - lastPos
+                if delta:FuzzyEq(pattern[patternIndex], patternTolerance) then
+                    patternIndex = patternIndex + 1
+                    if patternIndex > #pattern then
+                        if notificationCallback then
+                            notificationCallback(player.Name)
+                        end
+                        print("[Debug] Detected unique twitch pattern in:", player.Name)
+                        patternIndex = 1 -- Reset after detection
                     end
-                    print("[Debug] Detected twitch in:", player.Name, "Delta:", delta)
+                else
+                    patternIndex = 1 -- Reset if pattern doesn't match
                 end
             end
 
-            lastPositions[player.UserId] = currentPos
+            recentMovements[player.UserId] = currentPos
         end
     end
 end
