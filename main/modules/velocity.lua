@@ -39,12 +39,15 @@ end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
+    -- Reset the original forces to ensure it works with the new character
+    originalForces = {}
+    debugPrint("[Debug] New character added:", newCharacter.Name)
 end
 
 function velocity.start()
     if velocityConnection then return end
-    player.CharacterAdded:Connect(onCharacterAdded)
     character = player.Character or player.CharacterAdded:Wait()
+    player.CharacterAdded:Connect(onCharacterAdded)
     velocityConnection = game:GetService("RunService").Stepped:Connect(suppressAndApplyForces)
     active = true
     debugPrint("[Debug] Velocity module started.")
