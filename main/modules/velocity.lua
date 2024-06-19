@@ -47,6 +47,7 @@ function velocity.start()
     character = player.Character or player.CharacterAdded:Wait()
     velocityConnection = game:GetService("RunService").Stepped:Connect(suppressAndApplyForces)
     active = true
+    debugPrint("[Debug] Velocity module started.")
 end
 
 function velocity.stop()
@@ -65,12 +66,14 @@ function velocity.stop()
         originalForces = {}
     end
     active = false
+    debugPrint("[Debug] Velocity module stopped.")
 end
 
 function velocity.updateHorizontal(value)
     local percent = tonumber(value) / 100
     if percent then
         horizontalPercent = percent
+        debugPrint("[Debug] Horizontal velocity updated to:", value)
     end
 end
 
@@ -78,6 +81,7 @@ function velocity.updateVertical(value)
     local percent = tonumber(value) / 100
     if percent then
         verticalPercent = percent
+        debugPrint("[Debug] Vertical velocity updated to:", value)
     end
 end
 
