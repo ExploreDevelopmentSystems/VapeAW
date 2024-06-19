@@ -9,6 +9,10 @@ local velocityConnection
 local originalForces = {}
 local active = false
 
+local function debugPrint(...)
+    print(...)
+end
+
 local function suppressAndApplyForces()
     if not character or not active then return end
 
@@ -39,6 +43,17 @@ end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
+    -- Restore original forces when the character respawns
+    for instance, original in pairs(originalForces) do
+        if instance and instance.Parent then
+            if instance:IsA("BodyVelocity") then
+                instance.Velocity = original.velocity
+            elseif instance:IsA("BodyForce") then
+                instance.Force = original.force
+            end
+        end
+    end
+    originalForces = {}
 end
 
 function velocity.start()
