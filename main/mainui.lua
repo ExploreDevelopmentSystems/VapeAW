@@ -1,5 +1,5 @@
 shared.VapeIndependent = true
-shared.CustomSaveVape = "VapeAWLiveV1"
+shared.CustomSaveVape = "VapeAWLive"
 
 print("[Debug] UI loading.")
 
@@ -137,7 +137,6 @@ velocity.CreateSlider({
     Default = 100,
     Double = 1
 })
-
 
 -- Punch Module UI
 local punch = Blatant.CreateOptionsButton({
@@ -288,4 +287,127 @@ local tag = Render.CreateOptionsButton({
 
 tag.CreateToggle({
     Name = "Priority",
-    HoverText = "Render through walls if enabled. Use ray
+    HoverText = "Render through walls if enabled. Use raycast if disabled.",
+    Function = function(callback)
+        modules.tag.togglePriority(callback)
+    end,
+    Default = false
+})
+
+tag.CreateToggle({
+    Name = "Delete OG",
+    HoverText = "Makes the original nametag invisible.",
+    Function = function(callback)
+        modules.tag.toggleDeleteOG(callback)
+    end,
+    Default = false
+})
+
+tag.CreateToggle({
+    Name = "Show BG",
+    HoverText = "Toggle the background of the nametag.",
+    Function = function(callback)
+        modules.tag.toggleShowBG(callback)
+    end,
+    Default = true
+})
+
+tag.CreateToggle({
+    Name = "Display",
+    HoverText = "Show the display name instead of the username.",
+    Function = function(callback)
+        modules.tag.toggleDisplay(callback)
+    end,
+    Default = false
+})
+
+tag.CreateToggle({
+    Name = "Distance",
+    HoverText = "Show distance to the player.",
+    Function = function(callback)
+        modules.tag.toggleDistance(callback)
+    end,
+    Default = false
+})
+
+tag.CreateToggle({
+    Name = "Ability",
+    HoverText = "Show the player's Ability value.",
+    Function = function(callback)
+        modules.tag.toggleAbility(callback)
+    end,
+    Default = false
+})
+
+tag.CreateToggle({
+    Name = "Include NPCs",
+    HoverText = "Include NPCs in nametags.",
+    Function = function(callback)
+        modules.tag.toggleIncludeNPCs(callback)
+    end,
+    Default = false
+})
+
+tag.CreateSlider({
+    Name = "Scale",
+    Min = 1,
+    Max = 30,
+    Function = function(val)
+        modules.tag.updateScale(val)
+    end,
+    HoverText = "Adjust the scale of the nametags.",
+    Default = 1,
+    Double = 1
+})
+
+tag.CreateSlider({
+    Name = "Height",
+    Min = 2,
+    Max = 30,
+    Function = function(val)
+        modules.tag.updateHeight(val)
+    end,
+    HoverText = "Adjust the height of the nametags.",
+    Default = 2,
+    Double = 1
+})
+
+tag.CreateSlider({
+    Name = "Update Interval",
+    Min = 0.1,
+    Max = 1,
+    Function = function(val)
+        modules.tag.updateInterval(val)
+    end,
+    HoverText = "Interval for updating nametags in seconds.",
+    Default = 0.5,
+    Double = 0.1
+})
+
+-- FOV Module UI
+local fov = Render.CreateOptionsButton({
+    Name = "FOV",
+    Function = function(callback)
+        if callback then
+            modules.fov.start()
+        else
+            modules.fov.stop()
+        end
+    end,
+    HoverText = "Adjusts the Field of View (FOV) of the camera.",
+    Default = false
+})
+
+fov.CreateSlider({
+    Name = "FOV Amount",
+    Min = 30,
+    Max = 120,
+    Function = function(val)
+        modules.fov.update(val)
+    end,
+    HoverText = "Adjust the Field of View (FOV) of the camera.",
+    Default = 70,
+    Double = 1
+})
+
+shared.VapeManualLoad = true
