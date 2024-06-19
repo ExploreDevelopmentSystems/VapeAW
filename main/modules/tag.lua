@@ -154,7 +154,7 @@ end
 function tag.toggleDeleteOG(callback)
     deleteOGEnabled = callback
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer.Character then
+        if targetPlayer ~= player and targetPlayer.Character then  -- Exclude local player
             local head = targetPlayer.Character:FindFirstChild("Head")
             if head then
                 local originalTextLabel = head:FindFirstChild("Name Tag") and head["Name Tag"]:FindFirstChild("TextLabel")
