@@ -34,7 +34,6 @@ local function punchBosses()
     if not active or not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
     local localRootPart = character.HumanoidRootPart
-
     local bossesFolder = ReplicatedStorage:FindFirstChild("Bosses")
     local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
 
@@ -56,14 +55,10 @@ local function punchBosses()
                         local impactPosition = humanoidRootPart.Position
                         debugPrint("[Debug] Punching boss:", bossInWorkspace.Name)
                         punchEvent:FireServer(bossInWorkspace, impactPosition)
-                    else
-                        debugPrint("[Debug] No HumanoidRootPart for boss:", bossInWorkspace.Name)
                     end
                 end
             end
         end
-    else
-        debugPrint("[Debug] Bosses folder or punch event not found.")
     end
 end
 
