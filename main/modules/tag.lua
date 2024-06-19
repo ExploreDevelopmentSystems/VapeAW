@@ -4,14 +4,12 @@ local tag = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local Debris = game:GetService("Debris")
 local player = Players.LocalPlayer
 local tagDistance = 50
 local priorityEnabled = false
 local deleteOGEnabled = false
 local displayEnabled = false
 local abilityEnabled = false
-local backgroundColor = Color3.new(0, 0, 0)
 local scale = 1
 local tagConnection
 
@@ -28,7 +26,6 @@ local function createOrUpdateNametag(targetPlayer)
 
     local billboardGui = head:FindFirstChild("CustomNametag")
     if not billboardGui then
-        -- Create new BillboardGui if it doesn't exist
         billboardGui = Instance.new("BillboardGui")
         billboardGui.Name = "CustomNametag"
         billboardGui.Size = UDim2.new(4 * scale, 0, 1 * scale, 0)
@@ -39,10 +36,10 @@ local function createOrUpdateNametag(targetPlayer)
         textLabel.Name = "NametagLabel"
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.BackgroundTransparency = 0.5
-        textLabel.BackgroundColor3 = backgroundColor
         textLabel.TextStrokeTransparency = 0
         textLabel.TextColor3 = Color3.new(1, 1, 1)
         textLabel.TextScaled = true
+        textLabel.TextWrapped = true
         textLabel.Parent = billboardGui
 
         billboardGui.Parent = head
@@ -58,15 +55,20 @@ local function createOrUpdateNametag(targetPlayer)
         end
         nameLabel.Text = displayName .. abilityText
         nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundColor3 = backgroundColor
         billboardGui.Size = UDim2.new(4 * scale, 0, 1 * scale, 0)
+        billboardGui.AlwaysOnTop = priorityEnabled
         debugPrint("[Debug] Nametag updated for:", targetPlayer.Name)
     end
 
     if deleteOGEnabled then
         local originalNametag = character:FindFirstChild("Name Tag", true)
         if originalNametag then
-            originalNametag:Destroy()
+            originalNametag.Transparency = 1  -- Make it invisible
+        end
+    else
+        local originalNametag = character:FindFirstChild("Name Tag", true)
+        if originalNametag then
+            originalNametag.Transparency = 0  -- Make it visible
         end
     end
 end
@@ -118,6 +120,10 @@ function tag.stop()
                 if existingTag then
                     existingTag:Destroy()
                 end
+                local originalNametag = targetPlayer.Character:FindFirstChild("Name Tag", true)
+                if originalNametag then
+                    originalNametag.Transparency = 0  -- Make it visible again
+                end
             end
         end
         debugPrint("[Debug] Tag module stopped.")
@@ -147,15 +153,6 @@ end
 function tag.toggleAbility(callback)
     abilityEnabled = callback
     debugPrint("[Debug] Ability display toggled:", callback)
-end
-
-function tag.updateBackground(val)
-    if typeof(val) == "Color3" then
-        backgroundColor = val
-        debugPrint("[Debug] Background color updated to:", backgroundColor)
-    else
-        warn("[Debug] Invalid color value provided.")
-    end
 end
 
 function tag.updateScale(value)
