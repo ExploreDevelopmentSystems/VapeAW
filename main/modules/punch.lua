@@ -187,12 +187,16 @@ local function punchNearestEntity()
                 end
             end
 
-            local impactPosition = punchParticleEnabled and computeImpactPosition(nearestEntity) or humanoidRootPart.Position
             local punchEvent = ReplicatedStorage:FindFirstChild("Remote Events") and ReplicatedStorage["Remote Events"]:FindFirstChild("Punch")
-
             if punchEvent then
-                debugPrint("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
-                punchEvent:FireServer(nearestEntity, impactPosition)
+                if punchParticleEnabled then
+                    local impactPosition = computeImpactPosition(nearestEntity)
+                    debugPrint("[Debug] Firing punch event. Target:", nearestEntity:GetFullName(), "Position:", impactPosition)
+                    punchEvent:FireServer(nearestEntity, impactPosition)
+                else
+                    debugPrint("[Debug] Firing punch event without position. Target:", nearestEntity:GetFullName())
+                    punchEvent:FireServer(nearestEntity)
+                end
                 debugPrint("[Debug] Punch event fired.")
                 if punchVisualizerEnabled then
                     createVisualizerPart(nearestEntity)
