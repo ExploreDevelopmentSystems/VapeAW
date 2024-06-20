@@ -8,11 +8,14 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local character
 local heartbeatConnection
+local modelCache = {}
 
 local detectionRadius = 35
 local abilityName = "Jello"
 local checkCastle = false
 local checkMushroom = false
+local heartbeatInterval = 0.2
+local lastHeartbeatTime = tick()
 
 local modelsToCheck = {
     {Name = "Jello Castle", PartName = "Hitbox", Enabled = function() return checkCastle end},
@@ -45,7 +48,34 @@ local function checkAndDestroy(model)
     end
 end
 
+local function cacheModels()
+    modelCache = {}
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") then
+            table.insert(modelCache, model)
+        end
+    end
+end
+
+local function onModelAdded(model)
+    if model:IsA("Model") then
+        table.insert(modelCache, model)
+    end
+end
+
+local function onModelRemoving(model)
+    for i, cachedModel in ipairs(modelCache) do
+        if cachedModel == model then
+            table.remove(modelCache, i)
+            break
+        end
+    end
+end
+
 local function onHeartbeat()
+    if tick() - lastHeartbeatTime < heartbeatInterval then return end
+    lastHeartbeatTime = tick()
+
     local localRootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not localRootPart then return end
 
@@ -57,10 +87,8 @@ local function onHeartbeat()
                 if distance <= detectionRadius then
                     local ability = targetPlayer:FindFirstChild("leaderstats") and targetPlayer.leaderstats:FindFirstChild("Ability")
                     if ability and ability.Value == abilityName then
-                        for _, model in ipairs(Workspace:GetDescendants()) do
-                            if model:IsA("Model") then
-                                checkAndDestroy(model)
-                            end
+                        for _, model in ipairs(modelCache) do
+                            checkAndDestroy(model)
                         end
                     end
                 end
@@ -76,6 +104,9 @@ function jello.start()
         character = newCharacter
     end)
     heartbeatConnection = RunService.Heartbeat:Connect(onHeartbeat)
+    cacheModels()
+    Workspace.DescendantAdded:Connect(onModelAdded)
+    Workspace.DescendantRemoving:Connect(onModelRemoving)
     debugPrint("[Debug] Jello module started.")
 end
 
@@ -85,6 +116,8 @@ function jello.stop()
         heartbeatConnection = nil
         debugPrint("[Debug] Jello module stopped.")
     end
+    Workspace.DescendantAdded:Disconnect(onModelAdded)
+    Workspace.DescendantRemoving:Disconnect(onModelRemoving)
 end
 
 function jello.toggleCastle(callback)
