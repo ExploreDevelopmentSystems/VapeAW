@@ -31,11 +31,11 @@ local function getPlayerDistance(targetPlayer)
     if localRootPart and targetRootPart then
         return (localRootPart.Position - targetRootPart.Position).Magnitude
     end
-    return math.huge  -- Return a large value if the distance can't be calculated
+    return math.huge -- Return a large value if the distance can't be calculated
 end
 
 local function createTagForEntity(targetModel)
-    if targetModel == player.Character then return end  -- Exclude local player
+    if targetModel == player.Character then return end -- Exclude local player
 
     local head = targetModel:FindFirstChild("Head") or targetModel:FindFirstChild("HumanoidRootPart")
 
@@ -73,7 +73,7 @@ local function createTagForEntity(targetModel)
 end
 
 local function updateTagForEntity(targetModel)
-    if targetModel == player.Character then return end  -- Exclude local player
+    if targetModel == player.Character then return end -- Exclude local player
 
     local head = targetModel:FindFirstChild("Head") or targetModel:FindFirstChild("HumanoidRootPart")
 
@@ -154,7 +154,7 @@ function tag.start()
                 end
             end
             if includeNPCs then
-                for _, targetModel in pairs(Workspace:GetDescendants()) do
+                for _, targetModel in ipairs(Workspace:GetDescendants()) do
                     if targetModel:IsA("Model") and targetModel:FindFirstChild("HumanoidRootPart") and not Players:GetPlayerFromCharacter(targetModel) then
                         updateTagForEntity(targetModel)
                     end
@@ -205,7 +205,7 @@ end
 function tag.toggleDeleteOG(callback)
     deleteOGEnabled = callback
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= player and targetPlayer.Character then  -- Exclude local player
+        if targetPlayer ~= player and targetPlayer.Character then -- Exclude local player
             local head = targetPlayer.Character:FindFirstChild("Head")
             if head then
                 local originalTextLabel = head:FindFirstChild("Name Tag") and head["Name Tag"]:FindFirstChild("TextLabel")
