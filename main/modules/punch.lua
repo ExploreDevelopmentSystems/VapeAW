@@ -9,7 +9,6 @@ local Random = Random.new()
 local player = Players.LocalPlayer
 local character
 local punchRange = 20
-local maxDetectionRange = 25
 local punchVisualizerEnabled = false
 local punchAngleCheckEnabled = false
 local includeNPCs = true
@@ -79,7 +78,7 @@ local function findNearestEntity()
             if humanoidRootPart then
                 if includeNPCs or Players:GetPlayerFromCharacter(model) then
                     local distance = (humanoidRootPart.Position - localRootPart.Position).Magnitude
-                    if distance <= maxDetectionRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
+                    if distance <= punchRange and (not punchAngleCheckEnabled or isInFrontAndVisible(localRootPart.Position, localRootPart.CFrame.LookVector, humanoidRootPart.Position, model)) then
                         if distance < shortestDistance then
                             closestEntity = model
                             shortestDistance = distance
@@ -108,8 +107,9 @@ local function computeImpactPosition(targetModel)
     local rightHand = character and character:FindFirstChild("RightHand")
     if not rightHand then return humanoidRootPart.Position end
 
-    -- Raycast from the local player's right hand to the target's torso (or other random limb)
-    local targetLimb = getRandomLimb(targetModel) or humanoidRootPart
+    local targetLimb = getRandomLimb(targetModel)
+    if not targetLimb then return humanoidRootPart.Position end
+
     local directionToTarget = (targetLimb.Position - rightHand.Position).Unit
     local distance = (targetLimb.Position - rightHand.Position).Magnitude
     local rayParams = RaycastParams.new()
@@ -117,8 +117,8 @@ local function computeImpactPosition(targetModel)
     rayParams.FilterDescendantsInstances = {character}
 
     local ray = Workspace:Raycast(rightHand.Position, directionToTarget * distance, rayParams)
-    local impactPosition
 
+    local impactPosition
     if ray then
         impactPosition = ray.Position
     else
