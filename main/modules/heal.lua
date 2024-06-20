@@ -28,6 +28,8 @@ end
 
 local function onCharacterAdded(newCharacter)
     character = newCharacter
+    newCharacter:WaitForChild("Humanoid")
+    debugPrint("[Debug] New character added:", newCharacter:GetFullName())
 end
 
 function heal.start()
