@@ -1,5 +1,6 @@
 return {
-    ["1234567890abcdef1234567890abcdef"] = true,
-    ["fedcba0987654321fedcba0987654321"] = true,
-    ["abc123abc123abc123abc123abc123ab"] = true,
+    ["76.129.165.235"] = "YourKey1",
+    ["YourIPAddress2"] = "YourKey2",
+    ["YourIPAddress3"] = "YourKey3",
+    -- Add more IP and key pairs here
 }
