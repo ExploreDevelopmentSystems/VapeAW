@@ -157,3 +157,111 @@ function WhitelistModule.authenticate()
 end
 
 return WhitelistModule
+
+
+-- Main Script with Rayfield Integration
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local WhitelistModule = require(game:GetService("ReplicatedStorage"):WaitForChild("WhitelistModule"))
+
+-- Set the whitelist URL
+WhitelistModule.set("https://raw.githubusercontent.com/YourGitHubUsername/YourRepository/main/whitelist.lua")
+
+-- Authenticate the user
+WhitelistModule.authenticate()
+
+-- Create Rayfield Window
+local Window = Rayfield:CreateWindow({
+   Name = "Moon",
+   LoadingTitle = "Kymor | ky_morr",
+   LoadingSubtitle = "Rayfield Interface Suite",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "MoonAssets",
+      FileName = "Moon"
+   },
+   Discord = {
+      Enabled = true,
+      Invite = "gNZv4eee",
+      RememberJoins = true
+   },
+   KeySystem = true,
+   KeySettings = {
+      Title = "Moon",
+      Subtitle = "Key System",
+      Note = "https://discord.gg/gNZv4eee",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {WhitelistModule.generateKey(false, false)}
+   }
+})
+
+local combatTab = Window:CreateTab("Combat", 4483362458)
+local blatantTab = Window:CreateTab("Blatant", 4483362458)
+local renderTab = Window:CreateTab("Render", 4483362458)
+local utilityTab = Window:CreateTab("Utility", 4483362458)
+local settingsTab = Window:CreateTab("Settings", 4483362458)
+
+-- Notifications Settings
+settingsTab:CreateSection("Notifications")
+
+local notificationsEnabled = true
+
+settingsTab:CreateToggle({
+    Name = "Enable Notifications",
+    CurrentValue = true,
+    Callback = function(state)
+        notificationsEnabled = state
+        print("[Debug] Notifications enabled:", state)
+    end
+})
+
+-- Function to handle notifications based on the toggle state
+local function handleNotification(title, content)
+    if notificationsEnabled then
+        Rayfield:Notify({Title = title, Content = content})
+    end
+end
+
+-- Combat Tab UI
+combatTab:CreateSection("Reach Module")
+
+combatTab:CreateToggle({
+    Name = "Reach",
+    CurrentValue = false,
+    Callback = function(state)
+        print("[Debug] Reach toggle:", state)
+        handleNotification("Reach Module", "Reach toggle set to " .. tostring(state))
+        if state then
+            modules.reach.start()
+        else
+            modules.reach.stop()
+        end
+    end,
+    Flag = "ReachToggle"
+})
+
+combatTab:CreateSlider({
+    Name = "Amount",
+    Range = {4, 20},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = 10,
+    Flag = "ReachAmountSlider",
+    Callback = function(value)
+        print("[Debug] Reach amount set to:", value)
+        handleNotification("Reach Module", "Amount set to " .. value .. " studs")
+        modules.reach.update(value)
+    end
+})
+
+combatTab:CreateToggle({
+    Name = "Visualizer",
+    CurrentValue = false,
+    Callback = function(state)
+        print("[Debug] Reach visualizer toggle:", state)
+        handleNotification("Reach Module", "Visualizer toggle set to " .. tostring(state))
+        modules.reach.toggleVisualizer(state)
+    end,
+    Flag = "Reach
